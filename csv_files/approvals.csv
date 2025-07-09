@@ -1,0 +1,5 @@
+﻿approval_id,request_id,user_id,decision,remarks
+1,1,1,approved,Approved for rolling pin and measuring cups
+2,2,2,approved,Approved for non-stick pots and stainless steel pans
+3,3,1,rejected,Not enough tools available
+4,4,2,approved,Approved for food processor and stand mixer

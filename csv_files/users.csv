@@ -1,0 +1,9 @@
+﻿user_id,role_id,email,password_hash,name
+1,1,admin@hbms.com,hashedpassword123,John Smith
+2,2,staff1@hbms.com,hashedpassword456,Jane Doe
+3,2,staff2@hbms.com,hashedpassword789,Robert Brown
+4,3,student1@hbms.com,hashedpassword101,Michael Johnson
+5,3,student2@hbms.com,hashedpassword102,Linda Davis
+6,3,student3@hbms.com,hashedpassword103,Chris Lee
+7,3,student4@hbms.com,hashedpassword104,Emily Clark
+,,,,
