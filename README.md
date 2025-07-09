@@ -23,8 +23,7 @@ npm install
 
 npm start
 
-
-------
+---
 
 # 🛠️ Express Backend Setup & Run Instructions
 
