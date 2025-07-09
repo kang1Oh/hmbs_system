@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "express": "^5.1.0"
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "lowdb": "^7.0.1",
+    "nedb": "^1.8.0",
+    "nedm": "^0.0.1"
   }
 }
