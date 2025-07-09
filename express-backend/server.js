@@ -5,6 +5,8 @@ const port = 8000; // Backend runs on port 5000
 
 // Routes Mounting
 const roleRoutes = require('./routes/roles_routes');
+const userRoutes = require('./routes/users_routes');
+
 
 const cors = require('cors');
 app.use(cors()); // Allow all origins by default
@@ -19,6 +21,7 @@ app.get('/', (req, res) => {
 
 // Mount routes
 app.use('/api/roles', roleRoutes);
+app.use('/api/users', userRoutes);
 
 
 // Start the server

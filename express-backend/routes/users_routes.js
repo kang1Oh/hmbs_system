@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { users } = require('../models/db');
 const CryptoJS = require('crypto-js');
+const bcrypt = require('bcrypt');
 const { SECRET_KEY } = require('../config');
+
+const SALT_ROUNDS = 10;
 
 // 🔐 Decryption helper
 function decryptId(encryptedId) {
@@ -24,12 +27,13 @@ router.get('/', (req, res) => {
   users.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
 
-    // Encrypt user IDs in response
-    const result = docs.map((user) => ({
-      ...user,
-      encryptedId: encryptId(user._id),
-      _id: undefined // optional: remove plain _id
-    }));
+    const result = docs.map((user) => {
+      const { _id, password, ...rest } = user;
+      return {
+        ...rest,
+        encryptedId: encryptId(_id),
+      };
+    });
 
     res.json(result);
   });
@@ -44,28 +48,39 @@ router.get('/:encryptedId', (req, res) => {
     if (err) return res.status(500).json({ error: err });
     if (!doc) return res.status(404).json({ message: 'User not found' });
 
-    // Add encrypted ID in response
-    res.json({ ...doc, encryptedId: req.params.encryptedId, _id: undefined });
+    const { password, ...safeDoc } = doc;
+    res.json({ ...safeDoc, encryptedId: req.params.encryptedId });
   });
 });
 
-// 🔹 POST a new user
-router.post('/', (req, res) => {
-  const newUser = {
-    ...req.body,
-    active: true,
-    createdAt: new Date()
-  };
+// 🔹 POST a new user (with hashed password)
+router.post('/', async (req, res) => {
+  try {
+    const { password, ...otherFields } = req.body;
 
-  users.insert(newUser, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
+    if (!password) return res.status(400).json({ error: 'Password is required' });
 
-    res.status(201).json({
-      ...newDoc,
-      encryptedId: encryptId(newDoc._id),
-      _id: undefined
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+    const newUser = {
+      ...otherFields,
+      password: hashedPassword,
+      active: true,
+      createdAt: new Date()
+    };
+
+    users.insert(newUser, (err, newDoc) => {
+      if (err) return res.status(500).json({ error: err });
+
+      const { password, _id, ...safeDoc } = newDoc;
+      res.status(201).json({
+        ...safeDoc,
+        encryptedId: encryptId(_id)
+      });
     });
-  });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
 });
 
 // 🔹 PUT (Update) user by encrypted ID
