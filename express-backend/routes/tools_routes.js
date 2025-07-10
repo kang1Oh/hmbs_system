@@ -21,14 +21,41 @@ router.get('/:id', (req, res) => {
 
 // CREATE tool
 router.post('/', (req, res) => {
-  const { name, category_id, availability_qty, unit, quantity, img } = req.body;
-  if (!name || !category_id) return res.status(400).json({ error: 'Required fields missing' });
+  const {
+    tool_id,
+    category_id,
+    name,
+    available_qty,
+    unit,
+    img,
+    quantity
+  } = req.body;
 
-  tools.insert({ name, category_id, availability_qty, unit, quantity, img }, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
+  // Validation
+  if (!tool_id || !category_id || !name || available_qty == null || !unit || quantity == null) {
+    console.log('❌ Missing data:', req.body); // Debug log
+    return res.status(400).json({ error: 'All required fields must be provided' });
+  }
+
+  // Prepare new tool
+  const newTool = {
+    tool_id: tool_id.trim(),
+    category_id: category_id.trim(),
+    name: name.trim(),
+    available_qty: Number(available_qty),
+    unit: unit.trim(),
+    img: img?.trim() || '',
+    quantity: Number(quantity),
+    createdAt: new Date()
+  };
+
+  // Insert into database
+  tools.insert(newTool, (err, newDoc) => {
+    if (err) return res.status(500).json({ error: err.message || err });
     res.status(201).json(newDoc);
   });
 });
+
 
 // UPDATE tool
 router.put('/:id', (req, res) => {
