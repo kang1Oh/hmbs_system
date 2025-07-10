@@ -33,10 +33,9 @@ Follow these steps to set up and run the Express backend after cloning the repos
 
 ## 📁 1. Navigate to the backend folder
 
-Assuming your Express app is inside a folder like `server/`, run:
-
 ```bash
 cd express-backend
+install node 18 for backend
 
 📦 2. Install dependencies
 npm install
