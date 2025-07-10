@@ -1,11 +1,7 @@
-{"name":"Jaime Lucero","user_id":"2022-00111","email":"jaime@example.com","role_id":"abc123","password":"$2b$10$JavtOTGMmWbe2HzA9ppTbewI.b6UNBHbyqb0p.3RyTpJUq2CBl1ki","active":true,"createdAt":{"$$date":1752040873834},"_id":"6jX2YGyOFEt1jhc8"}
-{"name":"Jaime Lucero","user_id":"2022-00111","email":"jaime_test@example.com","role_id":"gcLO1Bf6q7yN5VZ9","password":"$2b$10$HAL5QLhlRnspR7Vq5UW0C.lzqZtzjs6HjwEys02lNilJZjAZ4kD2O","active":true,"createdAt":{"$$date":1752040970166},"_id":"WHWyy5xBulm6yeP1"}
-{"$$deleted":true,"_id":"6jX2YGyOFEt1jhc8"}
-{"$$deleted":true,"_id":"WHWyy5xBulm6yeP1"}
-{"user_id":"","role_id":"1","email":"admin@hbms.com","name":"John Smith","password":"$2b$10$xEL7z/4FSLOcoqDcRTII4.jJW9ytEhJO5yoZk0zcKdw18xsreJiYK","active":true,"createdAt":{"$$date":1752113143686},"_id":"Ud3IKAcuBAQwbZYf"}
-{"user_id":"","role_id":"2","email":"staff1@hbms.com","name":"Jane Doe","password":"$2b$10$ewvPp9CilflkNlfiXyHfyuIGlmpqmGdISgEAs4GtBJGESpIW4eAd2","active":true,"createdAt":{"$$date":1752113143762},"_id":"yCYJ6sDPXnap9B9z"}
-{"user_id":"","role_id":"2","email":"staff2@hbms.com","name":"Robert Brown","password":"$2b$10$NG7paZo8JuwIU4uGQjYlrOL6R8bs94NUhSAYCjyOIrq4qR32mMLS6","active":true,"createdAt":{"$$date":1752113143833},"_id":"jtQqGvgGfC2LlUwG"}
-{"user_id":"","role_id":"3","email":"student1@hbms.com","name":"Michael Johnson","password":"$2b$10$GJWC.Ws6a1jYnuQut3bb6OOo2WgCoif2khzr.f496vw9VqYqnV1S.","active":true,"createdAt":{"$$date":1752113143903},"_id":"cbg8KRueWWZ73ybE"}
-{"user_id":"","role_id":"3","email":"student2@hbms.com","name":"Linda Davis","password":"$2b$10$svj7/DVDgXsG8A/55uaesOYZ9q59FSFe.LItdNSKe3fynGfZoo0oS","active":true,"createdAt":{"$$date":1752113143974},"_id":"nG5SGeypjNfWbuhz"}
-{"user_id":"","role_id":"4","email":"student3@hbms.com","name":"Chris Lee","password":"$2b$10$bWyPxnQ.fBqfxj0UMZgWJ.69sfU96xvxqP0AosOiqiqMcg/bwOd9S","active":true,"createdAt":{"$$date":1752113144045},"_id":"AzPLgVTGAUBIl08t"}
 {"user_id":"","role_id":"4","email":"student4@hbms.com","name":"Emily Clark","password":"$2b$10$DlAYjjhusGYIsoE1V8OU1.EIen7vZVr7YlQH2lYaAXXEmiBx8gHtO","active":true,"createdAt":{"$$date":1752113144115},"_id":"1Os0WSUnglQ7arEA"}
+{"user_id":"","role_id":"4","email":"student3@hbms.com","name":"Chris Lee","password":"$2b$10$bWyPxnQ.fBqfxj0UMZgWJ.69sfU96xvxqP0AosOiqiqMcg/bwOd9S","active":true,"createdAt":{"$$date":1752113144045},"_id":"AzPLgVTGAUBIl08t"}
+{"user_id":"","role_id":"1","email":"admin@hbms.com","name":"John Smith","password":"$2b$10$xEL7z/4FSLOcoqDcRTII4.jJW9ytEhJO5yoZk0zcKdw18xsreJiYK","active":true,"createdAt":{"$$date":1752113143686},"_id":"Ud3IKAcuBAQwbZYf"}
+{"user_id":"","role_id":"3","email":"student1@hbms.com","name":"Michael Johnson","password":"$2b$10$GJWC.Ws6a1jYnuQut3bb6OOo2WgCoif2khzr.f496vw9VqYqnV1S.","active":true,"createdAt":{"$$date":1752113143903},"_id":"cbg8KRueWWZ73ybE"}
+{"user_id":"","role_id":"2","email":"staff2@hbms.com","name":"Robert Brown","password":"$2b$10$NG7paZo8JuwIU4uGQjYlrOL6R8bs94NUhSAYCjyOIrq4qR32mMLS6","active":true,"createdAt":{"$$date":1752113143833},"_id":"jtQqGvgGfC2LlUwG"}
+{"user_id":"","role_id":"3","email":"student2@hbms.com","name":"Linda Davis","password":"$2b$10$svj7/DVDgXsG8A/55uaesOYZ9q59FSFe.LItdNSKe3fynGfZoo0oS","active":true,"createdAt":{"$$date":1752113143974},"_id":"nG5SGeypjNfWbuhz"}
+{"user_id":"","role_id":"2","email":"staff1@hbms.com","name":"Jane Doe","password":"$2b$10$ewvPp9CilflkNlfiXyHfyuIGlmpqmGdISgEAs4GtBJGESpIW4eAd2","active":true,"createdAt":{"$$date":1752113143762},"_id":"yCYJ6sDPXnap9B9z"}

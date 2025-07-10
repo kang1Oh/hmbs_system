@@ -19,14 +19,27 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { category_name } = req.body;
-  if (!category_name) return res.status(400).json({ error: 'category_name is required' });
+  const { category_id, category_name } = req.body;
 
-  categories.insert({ category_name }, (err, newDoc) => {
+  console.log('📥 Incoming body:', req.body); // 🔍 Debug log
+
+  if (!category_id || !category_name) {
+    const missingFields = [];
+    if (!category_id) missingFields.push('category_id');
+    if (!category_name) missingFields.push('category_name');
+
+    return res.status(400).json({
+      error: `Missing required field(s): ${missingFields.join(', ')}`,
+      received: req.body
+    });
+  }
+
+  categories.insert({ category_id, category_name }, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });
     res.status(201).json(newDoc);
   });
 });
+
 
 router.put('/:id', (req, res) => {
   categories.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numUpdated) => {
