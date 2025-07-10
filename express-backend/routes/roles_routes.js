@@ -6,7 +6,13 @@ const { roles } = require('../models/db');
 router.get('/', (req, res) => {
   roles.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err.message || err });
-    res.json(docs);
+
+    const rolesFormatted = docs.map(doc => ({
+      id: doc.id,
+      name: doc.name
+    }));
+
+    res.json(rolesFormatted);
   });
 });
 
@@ -21,13 +27,23 @@ router.get('/:id', (req, res) => {
 
 // CREATE a new role
 router.post('/', (req, res) => {
-  const newRole = {
-    name: req.body.name,
-  };
+  const { id, name } = req.body;
+
+  // Basic validation
+  if (!id || !name) {
+    return res.status(400).json({ error: 'Both id and name are required' });
+  }
+
+  const newRole = { id, name };
 
   roles.insert(newRole, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err.message || err });
-    res.status(201).json(newDoc);
+
+    // Respond with your custom ID and name
+    res.status(201).json({
+      id: newDoc.id,
+      name: newDoc.name
+    });
   });
 });
 

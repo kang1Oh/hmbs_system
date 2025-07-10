@@ -4,6 +4,5 @@
 3,2,staff2@hbms.com,hashedpassword789,Robert Brown
 4,3,student1@hbms.com,hashedpassword101,Michael Johnson
 5,3,student2@hbms.com,hashedpassword102,Linda Davis
-6,3,student3@hbms.com,hashedpassword103,Chris Lee
-7,3,student4@hbms.com,hashedpassword104,Emily Clark
-,,,,
+6,4,student3@hbms.com,hashedpassword103,Chris Lee
+7,4,student4@hbms.com,hashedpassword104,Emily Clark
