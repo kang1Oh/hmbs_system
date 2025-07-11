@@ -1,7 +1,12 @@
 // index.js
+require('dotenv').config();
 const express = require('express');
 const app = express();
-const port = 8000; // Backend runs on port 5000
+
+const port = process.env.PORT || 8000;  // Backend runs on port 5000, fallback to 8000 if .env is missing
+const host = '0.0.0.0'; // Enables access from other devices
+
+// Database connection
 
 // Routes Mounting
 const roleRoutes = require('./routes/roles_routes');
@@ -41,6 +46,6 @@ app.use('/api/releases', releaseRoutes);
 
 
 // Start the server
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`Server is running at http://${host}:${port}`);
 });
