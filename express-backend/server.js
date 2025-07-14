@@ -6,6 +6,8 @@ const app = express();
 const port = process.env.PORT || 8000;  // Backend runs on port 5000, fallback to 8000 if .env is missing
 const host = '0.0.0.0'; // Enables access from other devices
 
+
+
 // Database connection
 
 // Routes Mounting
