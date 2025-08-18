@@ -1,0 +1,32 @@
+/* Reset margin and padding for body and html */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  /* Ensures the body fills the screen */
+  overflow-x: hidden;
+  /* Prevents horizontal scrolling */
+  font-family: 'Poppins', sans-serif;
+}
+
+#root {
+  height: 100%;
+  /* Ensures the React root div takes up the full height */
+}
+
+/* Add this to ensure that the page stretches and flexes correctly */
+.homepage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Makes sure the content fills the full viewport height */
+}
+
+/* You can add any other universal resets or adjustments as needed */
