@@ -1,14 +1,47 @@
-// index.js
+// server.js | index.js
 require('dotenv').config();
 const express = require('express');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+
 const app = express();
 
-const port = process.env.PORT || 8000;  // Backend runs on port 5000, fallback to 8000 if .env is missing
+const port = process.env.PORT || 5000;  // Backend runs on port 5000, fallback to 8000 if .env is missing
 const host = '0.0.0.0'; // Enables access from other devices
 
+// --- CORS ---
+app.use(
+  cors({
+    origin: 'http://localhost:5173', // or whatever your front URL is
+    credentials: true,
+  })
+);
 
+// --- Parsers ---
+app.use(cookieParser());
+app.use(express.json());
 
-// Database connection
+// --- Sessions ---
+app.use(
+  session({
+    name: 'hmbs.sid',
+    secret: process.env.SESSION_SECRET || 'supersecretkey',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',   // good for same-origin (via Vite proxy)
+      secure: false,     // true only behind HTTPS
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+    },
+  })
+);
+
+// Example route
+app.get('/', (req, res) => {
+  res.send('Hello from Express!');
+});
 
 // Routes Mounting
 const roleRoutes = require('./routes/roles_routes');
@@ -22,19 +55,6 @@ const statusRoutes = require('./routes/statuses_routes');
 const groupRoutes = require('./routes/groups_routes');
 const releaseRoutes = require('./routes/release_routes');
 
-
-const cors = require('cors');
-app.use(cors()); // Allow all origins by default
-
-// Middleware to parse JSON
-app.use(express.json());
-
-// Example route
-app.get('/', (req, res) => {
-  res.send('Hello from Express!');
-});
-
-// Mount routes
 app.use('/api/roles', roleRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/approvals', approvalRoutes);

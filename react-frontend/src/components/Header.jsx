@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import hmbsLogo from '../assets/site-images/hmbs-logo-white.png';
 import handcartIcon from '../assets/handcart.png';
 import userIcon from '../assets/user.png';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import LogoutModal from './LogoutModal';
 
 function Header() {
   const navigate = useNavigate();
   const [cartCount, setCartCount] = useState(0);
-  const [showStaffLogin, setStaffLogin] = useState(false);
 
-  const handleStaffLogin = () => {
-    navigate('/staff-login');
-    setStaffLogin(false); // Close the dropdown after navigating
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/users/logout', {}, { withCredentials: true }); 
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      localStorage.removeItem('user'); // Clear local data
+      navigate('/'); // Redirect to login page
+    }
   };
+
+  const [showLogoutDropdown, setLogoutDropdown] = useState(false);
 
   const handleCartClick = () => {
     navigate('/cart');  // Navigate to the cart page
@@ -21,7 +31,7 @@ function Header() {
 
   const wrapperStyle = {
     position: 'relative',
-    zIndex: 10, // ✅ Always on top
+    zIndex: 10, 
   };
 
   const headerStyle = {
@@ -91,7 +101,7 @@ function Header() {
     justifyContent: 'center',
   };
 
-  const StaffLoginBoxStyle = {
+  const LogoutBoxStyle = {
     position: 'absolute',
     top: '45px',
     right: '0',
@@ -142,12 +152,15 @@ function Header() {
               src={userIcon}
               alt="User"
               style={iconStyle}
-              onClick={() => setStaffLogin(!showStaffLogin)}
+              onClick={() => setLogoutDropdown(!showLogoutDropdown)}
             />
-            {showStaffLogin && (
+            {showLogoutDropdown && (
               <div
-                style={StaffLoginBoxStyle}
-                onClick={handleStaffLogin}
+                style={LogoutBoxStyle}
+                onClick={(e) => {
+                setShowLogoutModal(true);
+                setLogoutDropdown(false);
+              }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f2f2f2';
                 }}
@@ -155,12 +168,20 @@ function Header() {
                   e.currentTarget.style.backgroundColor = '#ffffff';
                 }}
               >
-                Login as Staff
+                Logout
               </div>
             )}
           </div>
         </div>
       </header>
+      
+      {showLogoutModal && (
+      <LogoutModal
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
+    )}
+
     </div>
   );
 }

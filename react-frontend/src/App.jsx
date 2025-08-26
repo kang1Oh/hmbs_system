@@ -1,9 +1,10 @@
-// Import the necessary styles for Slick Carousel
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoutes';
+import PublicRoute from "./components/PublicRoutes";
 
 // STUDENT PAGES
 import EquipmentPage from './pages/EquipmentPage';
@@ -11,6 +12,7 @@ import About from './pages/AboutPage';
 import CartPage from './pages/CartPage';
 import BorrowRequestForm from './pages/BorrowRequestForm';
 import StudentLoginPage from './pages/StudentLoginPage';
+import TransactionPage from './pages/TransactionPage';
 
 // STAFF AND ADMIN PAGES
 import StaffLoginPage from './pages/StaffLoginPage';
@@ -26,39 +28,46 @@ import RequeststoInstructor from "./pages/RequestInstructorPage";
 import RequeststoProgHead from "./pages/RequestProgHeadPage";
 import RequestDetailsInstructor from "./pages/RequestDetailsInstructor";
 import RequestDetailsProgHead from "./pages/RequestDetailsProgHead";
-import TransactionPage from './pages/TransactionPage'; 
 
+const ROLES = {
+  ADMIN: '1',
+  INSTRUCTOR: '2',
+  PROGRAM_HEAD: '3',
+  STUDENT: '4',
+};
 
 
 function App() {
-    return (
-        <Router>
-            <Routes>
-                {/* Student Pages */}
-                <Route path="/equipment" element={<EquipmentPage />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/borrow-request" element={<BorrowRequestForm />} />
-                <Route path="/" element={<StudentLoginPage />} />
-                <Route path="/transaction" element={<TransactionPage />} />
+  return (
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<PublicRoute><StudentLoginPage /></PublicRoute>} />
+        <Route path="/staff-login" element={<PublicRoute><StaffLoginPage /></PublicRoute>} />
 
-                {/* Admin Pages */}
-                <Route path="/staff-login" element={<StaffLoginPage />} />
-                <Route path="/requests-admin" element={<RequeststoAdmin />} />
-                <Route path="/request-details-admin/:id" element={<RequestDetailsAdmin />} />
-                <Route path="/request-approved-admin/:id" element={<RequestApprovedAdmin />} />
-                <Route path="/inventory" element={<InventoryPage />} />
-                <Route path="/add-to-inventory" element={<AddtoInventory />} />
-                <Route path="/registry" element={<RegistryPage />} />
+        {/* Student Protected Routes */}
+        <Route path="/equipment" element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]}><EquipmentPage /></ProtectedRoute>} />
+        <Route path="/about" element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]}><About /></ProtectedRoute>} />
+        <Route path="/cart" element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]}><CartPage /></ProtectedRoute>} />
+        <Route path="/borrow-request" element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]}><BorrowRequestForm /></ProtectedRoute>} />
+        <Route path="/transaction" element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]}><TransactionPage /></ProtectedRoute>} />
 
-                {/* Staff Pages */}
-                <Route path="/requests-instructor" element={<RequeststoInstructor />} />
-                <Route path="/requests-programhead" element={<RequeststoProgHead />} />
-                <Route path="/request-details-instructor/:id" element={<RequestDetailsInstructor />} />
-                <Route path="/request-details-programhead/:id" element={<RequestDetailsProgHead />} />
-            </Routes>
-        </Router>
-    );
+        {/* Admin Protected Routes (role_id = '1') */}
+        <Route path="/requests-admin" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><RequeststoAdmin /></ProtectedRoute>} />
+        <Route path="/request-details-admin/:id" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><RequestDetailsAdmin /></ProtectedRoute>} />
+        <Route path="/request-approved-admin/:id" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><RequestApprovedAdmin /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><InventoryPage /></ProtectedRoute>} />
+        <Route path="/add-to-inventory" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><AddtoInventory /></ProtectedRoute>} />
+        <Route path="/registry" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]}><RegistryPage /></ProtectedRoute>} />
+
+        {/* Staff Protected Routes (role_id = '2' for Instructor, '3' for Program Head) */}
+        <Route path="/requests-instructor" element={<ProtectedRoute allowedRoles={[ROLES.INSTRUCTOR]}><RequeststoInstructor /></ProtectedRoute>} />
+        <Route path="/requests-programhead" element={<ProtectedRoute allowedRoles={[ROLES.PROGRAM_HEAD]}><RequeststoProgHead /></ProtectedRoute>} />
+        <Route path="/request-details-instructor/:id" element={<ProtectedRoute allowedRoles={[ROLES.INSTRUCTOR]}><RequestDetailsInstructor /></ProtectedRoute>} />
+        <Route path="/request-details-programhead/:id" element={<ProtectedRoute allowedRoles={[ROLES.PROGRAM_HEAD]}><RequestDetailsProgHead /></ProtectedRoute>} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;

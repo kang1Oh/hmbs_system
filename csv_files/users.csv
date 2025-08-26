@@ -1,8 +1,8 @@
-﻿user_id,role_id,email,password_hash,name
-1,1,admin@hmbs.com,hashedpassword123,John Smith
-2,2,staff1@hmbs.com,hashedpassword456,Jane Doe
-3,2,staff2@hmbms.com,hashedpassword789,Robert Brown
-4,3,student1@hmbs.com,hashedpassword101,Michael Johnson
-5,3,student2@hmbs.com,hashedpassword102,Linda Davis
-6,4,student3@hmbs.com,hashedpassword103,Chris Lee
-7,4,student4@hmbs.com,hashedpassword104,Emily Clark
+﻿user_id,role_id,email,password,name
+1,1,admin@hmbs.com,admin123,John Smith
+2,2,instructor1@hmbs.com,staff201,Jane Doe
+3,2,instructor2@hmbms.com,staff202,Robert Brown
+4,3,programhead1@hmbs.com,staff301,Michael Johnson
+5,3,programhead2@hmbs.com,staff302,Linda Davis
+6,4,student1@hmbs.com,student401,Chris Lee
+7,4,student2@hmbs.com,student402,Emily Clark

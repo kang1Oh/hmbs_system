@@ -2,16 +2,19 @@
   "dependencies": {
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
     "nedb": "^1.8.0",
     "nedm": "^0.0.1"
-  },"scripts": {
+  },
+  "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   }

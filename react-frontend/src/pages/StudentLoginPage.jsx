@@ -1,16 +1,54 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import hmbsLogo from '../assets/site-images/hmbs-logo-maroon.png';
 import backgroundImage from '../assets/site-images/building-background1.png';
 import { useNavigate, Link } from 'react-router-dom';
 
 function StudentLoginPage() {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogIn = () => {
-    navigate('/equipment');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogIn = async () => {
+    try {
+      const res = await axios.post(
+        "api/users/login", 
+        { email, password },
+        { withCredentials: true } // Ensure cookies are sent with the request
+      );
+
+      if (res.data.success) {
+        const user = res.data.user;
+
+        // Redirect based on role_id
+        switch (user.role_id) {
+          case '1': // Admin
+            setError('You are trying to log in as an Admin. Redirect to Staff Login.');
+            break;
+          case '2': // Instructor
+            setError('You are trying to log in as an Instructor. Redirect to Staff Login.');
+            break;
+          case '3': // Program Head
+            setError('You are trying to log in as a Program Head. Redirect to Staff Login.');
+            break;
+          case '4': // Student
+            // Store user info in localStorage
+            localStorage.setItem("user", JSON.stringify(user));
+            navigate('/equipment');
+            break;
+          default:
+            setError('Role not recognized. Contact Admin.');
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed. Please try again.");
+    }
   };
 
+  
   const pageStyle = {
     display: 'flex',
     height: '100vh',
@@ -119,7 +157,13 @@ function StudentLoginPage() {
         <p style={subTextStyle}>Enter your credentials to proceed</p>
 
         <div style={fieldWrapper}>
-          <input type="text" placeholder="ID Number" style={inputStyle} />
+          <input
+            type="text"
+            placeholder="student@hmbs.com"
+            style={inputStyle}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           {IdIcon}
         </div>
 
@@ -128,11 +172,15 @@ function StudentLoginPage() {
             type={showPassword ? 'text' : 'password'}
             placeholder="Password"
             style={inputStyle}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
           <span style={eyeBtn} onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? EyeOffIcon : EyeIcon}
           </span>
         </div>
+
+        {error && <p style={{ color: "red", fontSize: 14 }}>{error}</p>}
 
         <button style={buttonStyle} onClick={handleLogIn}>Log In</button>
 

@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { FaUserCircle } from 'react-icons/fa';
 import { FiLogOut } from 'react-icons/fi';
 import hmbsLogoWhite from '../assets/site-images/hmbs-logo-white.png';
 import { useNavigate } from 'react-router-dom';
-import LogoutModal from './LogoutModal'; // Make sure the path is correct
+import LogoutModal from './LogoutModal'; 
 
 const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin' }) => {
   const navigate = useNavigate();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogoutClick = () => setShowLogoutModal(true);
-  const handleCancel = () => setShowLogoutModal(false);
-  const handleConfirmLogout = () => {
-    navigate('/staff-login');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/users/logout', {}, { withCredentials: true });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      localStorage.removeItem('user');
+      navigate('/staff-login');
+    }
   };
 
   const styles = {
@@ -94,6 +100,7 @@ const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin
     <>
       <aside style={styles.sidebar}>
         <div style={styles.sidebarInner}>
+          {/* Navigation Section */}
           <div style={styles.navSection}>
             <img src={hmbsLogoWhite} alt="HMBS Logo" style={styles.logo} />
             {navItems.map((item) => (
@@ -118,6 +125,7 @@ const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin
             ))}
           </div>
 
+          {/* Bottom Section: User Info and Logout */}
           <div style={styles.sidebarBottom}>
             <div style={styles.userInfo}>
               <FaUserCircle size={30} />
@@ -126,17 +134,21 @@ const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin
                 <div style={{ fontSize: '0.85rem' }}>{userSubrole}</div>
               </div>
             </div>
-            <button style={styles.logoutButton} onClick={handleLogoutClick}>
+            <button
+              style={styles.logoutButton}
+              onClick={() => setShowLogoutModal(true)}
+            >
               <FiLogOut />
             </button>
           </div>
         </div>
       </aside>
 
+      {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <LogoutModal
-          onCancel={handleCancel}
-          onConfirm={handleConfirmLogout}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
         />
       )}
     </>

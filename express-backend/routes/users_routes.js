@@ -1,25 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { users } = require('../models/db');
-const CryptoJS = require('crypto-js');
-const bcrypt = require('bcrypt');
-const { SECRET_KEY } = require('../config');
 
-const SALT_ROUNDS = 10;
-
-// 🔐 Decryption helper
-function decryptId(encryptedId) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(encryptedId, SECRET_KEY);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    return null;
+// 🔹 RequireAuth to protect routes
+function requireAuth(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
-}
-
-// 🔐 Encryption helper (used when returning user data)
-function encryptId(id) {
-  return CryptoJS.AES.encrypt(id, SECRET_KEY).toString();
+  next();
 }
 
 // 🔹 GET all users
@@ -27,68 +15,42 @@ router.get('/', (req, res) => {
   users.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
 
-    const result = docs.map((user) => {
-      const { _id, password, ...rest } = user;
-      return {
-        ...rest,
-        encryptedId: encryptId(_id),
-      };
-    });
-
+    // Hide nothing except password
+    const result = docs.map(({ password, ...rest }) => rest);
     res.json(result);
   });
 });
 
-// 🔹 GET a user by encrypted ID
-router.get('/:encryptedId', (req, res) => {
-  const decryptedId = decryptId(req.params.encryptedId);
-  if (!decryptedId) return res.status(400).json({ error: 'Invalid ID' });
-
-  users.findOne({ _id: decryptedId }, (err, doc) => {
+// 🔹 GET a user by ID (plain ID, no encryption)
+router.get('/:id', (req, res) => {
+  users.findOne({ _id: req.params.id }, (err, doc) => {
     if (err) return res.status(500).json({ error: err });
     if (!doc) return res.status(404).json({ message: 'User not found' });
 
     const { password, ...safeDoc } = doc;
-    res.json({ ...safeDoc, encryptedId: req.params.encryptedId });
+    res.json(safeDoc);
   });
 });
 
-// 🔹 POST a new user (with hashed password)
-router.post('/', async (req, res) => {
-  try {
-    const { password, ...otherFields } = req.body;
+// 🔹 POST a new user (plain password)
+router.post('/', (req, res) => {
+  const newUser = {
+    ...req.body,
+    active: true,
+    createdAt: new Date()
+  };
 
-    if (!password) return res.status(400).json({ error: 'Password is required' });
+  users.insert(newUser, (err, newDoc) => {
+    if (err) return res.status(500).json({ error: err });
 
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-    const newUser = {
-      ...otherFields,
-      password: hashedPassword,
-      active: true,
-      createdAt: new Date()
-    };
-
-    users.insert(newUser, (err, newDoc) => {
-      if (err) return res.status(500).json({ error: err });
-
-      const { password, _id, ...safeDoc } = newDoc;
-      res.status(201).json({
-        ...safeDoc,
-        encryptedId: encryptId(_id)
-      });
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message || 'Server error' });
-  }
+    const { password, ...safeDoc } = newDoc;
+    res.status(201).json(safeDoc);
+  });
 });
 
-// 🔹 PUT (Update) user by encrypted ID
-router.put('/:encryptedId', (req, res) => {
-  const decryptedId = decryptId(req.params.encryptedId);
-  if (!decryptedId) return res.status(400).json({ error: 'Invalid ID' });
-
-  users.update({ _id: decryptedId }, { $set: req.body }, {}, (err, numReplaced) => {
+// 🔹 PUT (Update) user by ID
+router.put('/:id', (req, res) => {
+  users.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numReplaced) => {
     if (err) return res.status(500).json({ error: err });
     if (numReplaced === 0) return res.status(404).json({ message: 'User not found' });
 
@@ -96,16 +58,61 @@ router.put('/:encryptedId', (req, res) => {
   });
 });
 
-// 🔹 DELETE (Soft-delete) user by encrypted ID
-router.delete('/:encryptedId', (req, res) => {
-  const decryptedId = decryptId(req.params.encryptedId);
-  if (!decryptedId) return res.status(400).json({ error: 'Invalid ID' });
-
-  users.update({ _id: decryptedId }, { $set: { active: false } }, {}, (err, numAffected) => {
+// 🔹 DELETE (Soft-delete) user by ID
+router.delete('/:id', (req, res) => {
+  users.update({ _id: req.params.id }, { $set: { active: false } }, {}, (err, numAffected) => {
     if (err) return res.status(500).json({ error: err });
     if (numAffected === 0) return res.status(404).json({ message: 'User not found' });
 
     res.json({ message: 'User account deactivated' });
+  });
+});
+
+// 🔹 POST login — sets session
+router.post('/login', (req, res) => {
+  const { email, password } = req.body;
+
+  users.findOne({ email }, (err, user) => {
+    if (err) return res.status(500).json({ success: false, message: 'Server error' });
+    if (!user) return res.status(401).json({ success: false, message: '201: Invalid credentials' });
+
+    if (user.password !== password) {
+      return res.status(401).json({ success: false, message: '202: Invalid credentials' });
+    }
+
+    // Save user info in session
+    req.session.user = {
+      _id: user._id,
+      user_id: user.user_id,
+      email: user.email,
+      role_id: String(user.role_id), // normalize to string
+      name: user.name,
+    };
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: req.session.user, // echo back stored data
+    });
+  });
+});
+
+// 🔹 GET /session — check current session
+router.get('/session', (req, res) => {
+  if (req.session && req.session.user) {
+    return res.json({ authenticated: true, user: req.session.user });
+  }
+  res.status(401).json({ authenticated: false });
+});
+
+// 🔹 POST /logout — destroy session and clear cookie
+router.post('/logout', (req, res) => {
+  if (!req.session) return res.json({ success: true });
+  req.session.destroy((err) => {
+    // clear cookie either way
+    res.clearCookie('hmbs.sid');
+    if (err) return res.status(500).json({ success: false, message: 'Logout failed' });
+    res.json({ success: true });
   });
 });
 
