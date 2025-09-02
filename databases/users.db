@@ -1,24 +1,7 @@
-{"﻿user_id":"2","role_id":"2","email":"staff1@hbms.com","password_hash":"hashedpassword456","name":"Jane Doe","_id":"0AS5ts91PBRlPOy9"}
-{"﻿user_id":"1","role_id":"1","email":"admin@hbms.com","password_hash":"hashedpassword123","name":"John Smith","_id":"1LFziCj5tC5mTgJ4"}
-{"﻿user_id":"5","role_id":"3","email":"student2@hbms.com","password_hash":"hashedpassword102","name":"Linda Davis","_id":"5xYeB4ZDCPOPdr89"}
-{"﻿user_id":"7","role_id":"3","email":"student4@hbms.com","password_hash":"hashedpassword104","name":"Emily Clark","_id":"8N0xu6bgGiO6ddHe"}
-{"﻿user_id":"6","role_id":"3","email":"student3@hbms.com","password_hash":"hashedpassword103","name":"Chris Lee","_id":"GmBCNJsMcNlZF7eD"}
-{"﻿user_id":"","role_id":"","email":"","password_hash":"","name":"","_id":"HVIwU8wthsSP32cu"}
-{"﻿user_id":"6","role_id":"3","email":"student3@hbms.com","password_hash":"hashedpassword103","name":"Chris Lee","_id":"M4d7zybscz8GInUb"}
-{"﻿user_id":"3","role_id":"2","email":"staff2@hbms.com","password_hash":"hashedpassword789","name":"Robert Brown","_id":"RQmh6uEphRtyGNCR"}
-{"﻿user_id":"4","role_id":"3","email":"student1@hbms.com","password_hash":"hashedpassword101","name":"Michael Johnson","_id":"ScuaEAo3ge225TPD"}
-{"﻿user_id":"2","role_id":"2","email":"staff1@hbms.com","password_hash":"hashedpassword456","name":"Jane Doe","_id":"UkwVfcvPA9usT53x"}
-{"﻿user_id":"7","role_id":"3","email":"student4@hbms.com","password_hash":"hashedpassword104","name":"Emily Clark","_id":"VP4XLfBn6TuhA1Dw"}
-{"﻿user_id":"3","role_id":"2","email":"staff2@hbms.com","password_hash":"hashedpassword789","name":"Robert Brown","_id":"Zqfj0nakNDvv9Ytq"}
-{"﻿user_id":"1","role_id":"1","email":"admin@hbms.com","password_hash":"hashedpassword123","name":"John Smith","_id":"ai82UjC9PXZFGwcD"}
-{"﻿user_id":"4","role_id":"3","email":"student1@hbms.com","password_hash":"hashedpassword101","name":"Michael Johnson","_id":"j0Z00IIARe4MmvDY"}
-{"﻿user_id":"","role_id":"","email":"","password_hash":"","name":"","_id":"rGbHRsIxhDmJMqUt"}
-{"﻿user_id":"5","role_id":"3","email":"student2@hbms.com","password_hash":"hashedpassword102","name":"Linda Davis","_id":"v4o27Yj9zb6KfABy"}
-{"﻿user_id":"1","role_id":"1","email":"admin@hbms.com","password_hash":"hashedpassword123","name":"John Smith","_id":"J12lHW5EjIBTaHKy"}
-{"﻿user_id":"2","role_id":"2","email":"staff1@hbms.com","password_hash":"hashedpassword456","name":"Jane Doe","_id":"qERTAR6byaXMpFmg"}
-{"﻿user_id":"3","role_id":"2","email":"staff2@hbms.com","password_hash":"hashedpassword789","name":"Robert Brown","_id":"8n4PSCAgErGc6JDM"}
-{"﻿user_id":"4","role_id":"3","email":"student1@hbms.com","password_hash":"hashedpassword101","name":"Michael Johnson","_id":"lBW7Hswyv5zwY7ZJ"}
-{"﻿user_id":"5","role_id":"3","email":"student2@hbms.com","password_hash":"hashedpassword102","name":"Linda Davis","_id":"tgRdi4e3cev8dn8X"}
-{"﻿user_id":"6","role_id":"3","email":"student3@hbms.com","password_hash":"hashedpassword103","name":"Chris Lee","_id":"gBvaUE31YA0MZ88U"}
-{"﻿user_id":"7","role_id":"3","email":"student4@hbms.com","password_hash":"hashedpassword104","name":"Emily Clark","_id":"BUuDgj79n1oGOT7j"}
-{"﻿user_id":"","role_id":"","email":"","password_hash":"","name":"","_id":"AjxLbpTKL4XLKdT5"}
+{"﻿user_id":"1","role_id":"1","email":"admin@hmbs.com","password":"admin123","name":"John Smith","_id":"epK4Ok3XkHT8AzyP"}
+{"﻿user_id":"2","role_id":"2","email":"instructor1@hmbs.com","password":"staff201","name":"Jane Doe","_id":"2kQB2ydLtQqgRl03"}
+{"﻿user_id":"3","role_id":"2","email":"instructor2@hmbms.com","password":"staff202","name":"Robert Brown","_id":"VzV8lzjaAUXooqMI"}
+{"﻿user_id":"4","role_id":"3","email":"programhead1@hmbs.com","password":"staff301","name":"Michael Johnson","_id":"Auw4VDPzKJRDn56o"}
+{"﻿user_id":"5","role_id":"3","email":"programhead2@hmbs.com","password":"staff302","name":"Linda Davis","_id":"viLlggrRxEwuF9Is"}
+{"﻿user_id":"6","role_id":"4","email":"student1@hmbs.com","password":"student401","name":"Chris Lee","_id":"ZK025HKhWIACl3pt"}
+{"﻿user_id":"7","role_id":"4","email":"student2@hmbs.com","password":"student402","name":"Emily Clark","_id":"gN1fGQq3sRpYUH58"}

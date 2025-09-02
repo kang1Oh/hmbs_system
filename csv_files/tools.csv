@@ -1,19 +1,19 @@
-﻿tool_id,category_id,name,available_qty,unit,img,quantity
-1,1,Rolling Pin,10,piece,,2
-2,1,Measuring Cups,15,set,,1
-3,2,Non-Stick Pots,5,piece,,1
-4,2,Stainless Steel Pans,8,piece,,1
-5,3,Blender,10,piece,,2
-6,3,Peeler,20,piece,,1
-7,4,Food Processor,6,piece,,1
-8,4,Stand Mixer,4,piece,,1
-9,5,Serving Tray,15,piece,,2
-10,5,Serving Spoon,25,piece,,3
-11,6,Cocktail Shaker,12,piece,,1
-12,6,Bar Glasses,30,set,,2
-13,7,Tableware Set,50,set,,5
-14,7,Dining Chairs,20,piece,,3
-15,8,Storage Bins,40,piece,,1
-16,8,Shelving Units,10,unit,,1
-17,9,Conference Tables,5,piece,,1
-18,9,Event Chairs,30,piece,,3
+﻿tool_id,category_id,name,available_qty,unit,img,quantity,disposalStatus
+1,1,Rolling Pin,10,piece,,2,
+2,1,Measuring Cups,15,set,,1,
+3,2,Non-Stick Pots,5,piece,,1,
+4,2,Stainless Steel Pans,8,piece,,1,
+5,3,Blender,10,piece,,2,For Disposal
+6,3,Peeler,20,piece,,1,
+7,4,Food Processor,6,piece,,1,Good Condition
+8,4,Stand Mixer,4,piece,,1,For Repair
+9,5,Serving Tray,15,piece,,2,
+10,5,Serving Spoon,25,piece,,3,
+11,6,Cocktail Shaker,12,piece,,1,
+12,6,Bar Glasses,30,set,,2,
+13,7,Tableware Set,50,set,,5,
+14,7,Dining Chairs,20,piece,,3,Good Condition
+15,8,Storage Bins,40,piece,,1,Good Condition
+16,8,Shelving Units,10,unit,,1,Good Condition
+17,9,Conference Tables,5,piece,,1,Good Condition
+18,9,Event Chairs,30,piece,,3,Good Condition
