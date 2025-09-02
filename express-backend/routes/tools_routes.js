@@ -28,7 +28,8 @@ router.post('/', (req, res) => {
     available_qty,
     unit,
     img,
-    quantity
+    quantity,
+    disposal_status // <-- Add this field
   } = req.body;
 
   // Validation
@@ -46,12 +47,14 @@ router.post('/', (req, res) => {
     unit: unit.trim(),
     img: img?.trim() || '',
     quantity: Number(quantity),
+    disposal_status: disposal_status?.trim() || '', // <-- Add this line
     createdAt: new Date()
   };
 
   // Insert into database
   tools.insert(newTool, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err.message || err });
+    console.log('Inserted tool:', newDoc); // <-- Add this line
     res.status(201).json(newDoc);
   });
 });

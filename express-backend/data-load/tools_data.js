@@ -23,6 +23,7 @@ function readToolsFromCSV(filePath) {
         const unit = row.unit?.trim();
         const img = row.img?.trim() || '';
         const quantity = row.quantity?.trim();
+        const disposal_status = row.disposal_status?.trim();
 
         if (tool_id && category_id && name && available_qty && unit && quantity) {
           const parsedTool = {
@@ -32,7 +33,8 @@ function readToolsFromCSV(filePath) {
             available_qty: parseInt(available_qty),
             unit,
             img,
-            quantity: parseInt(quantity)
+            quantity: parseInt(quantity),
+            disposal_status,
           };
 
           console.log('✅ Parsed tool:', parsedTool);
