@@ -4,14 +4,11 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import tempItemImg from '../assets/images/temp-item-img.png';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 function CartPage() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: 'Metal Tray', qty: 14, selectedQty: 1, price: 100 },
-    { id: 2, name: 'Dinner Fork', qty: 10, selectedQty: 2, price: 30 },
-    { id: 3, name: 'Golden Spoon', qty: 12, selectedQty: 5, price: 55 },
-  ]);
+  const { cart, updateQuantity, removeFromCart } = useCart();
 
   const [hoveredBtn, setHoveredBtn] = useState(null);
   const [hoveredRemove, setHoveredRemove] = useState(null);
@@ -20,32 +17,32 @@ function CartPage() {
     navigate('/borrow-request');  // Navigate to the request form 
   };
 
-  const handleIncrement = (id) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id && item.selectedQty < item.qty
-          ? { ...item, selectedQty: item.selectedQty + 1 }
-          : item
-      )
-    );
+  const handleIncrement = (id, maxQty) => {
+    const item = cart.find(i => i._id === id);
+    if (item.selectedQty < maxQty) {
+      updateQuantity(id, item.selectedQty + 1);
+    } else {
+      console.warn(`Max quantity reached for item: ${item.name}`);
+    }
   };
 
+
   const handleDecrement = (id) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id && item.selectedQty > 1
-          ? { ...item, selectedQty: item.selectedQty - 1 }
-          : item
-      )
-    );
+    const item = cart.find(i => i._id === id);
+    if (item.selectedQty > 1) {
+      updateQuantity(id, item.selectedQty - 1);
+    }
   };
 
   const handleRemove = (id) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    removeFromCart(id);
   };
 
-  const totalQty = cartItems.reduce((sum, item) => sum + item.selectedQty, 0);
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.selectedQty * item.price, 0);
+  const totalQty = cart.reduce((sum, item) => sum + item.selectedQty, 0);
+  const totalAmount = cart.reduce(
+    (sum, item) => sum + item.selectedQty * item.price,
+    0
+  );
 
   const pageStyle = {
     fontFamily: "'Poppins', sans-serif",
@@ -211,11 +208,11 @@ function CartPage() {
 
           <h2 style={sectionTitle}>Your Borrow List</h2>
 
-          {cartItems.length === 0 ? (
+          {cart.length === 0 ? (
             <p style={{ color: '#777' }}>Your cart is empty.</p>
           ) : (
-            cartItems.map(item => (
-              <div key={item.id} style={itemBox}>
+            cart.map(item => (
+              <div key={item._id} style={itemBox}>
                 <img src={tempItemImg} alt={item.name} style={imgStyle} />
                 <div style={itemInfoSection}>
                   <div style={itemDetails}>
@@ -224,26 +221,26 @@ function CartPage() {
                   </div>
                   <div style={qtyControls}>
                     <div
-                      style={qtyBox(hoveredBtn === `dec-${item.id}`)}
-                      onClick={() => handleDecrement(item.id)}
-                      onMouseEnter={() => setHoveredBtn(`dec-${item.id}`)}
+                      style={qtyBox(hoveredBtn === `dec-${item._id}`)}
+                      onClick={() => handleDecrement(item._id)}
+                      onMouseEnter={() => setHoveredBtn(`dec-${item._id}`)}
                       onMouseLeave={() => setHoveredBtn(null)}
                     >
                       −
                     </div>
                     <div style={qtyDisplayBox}>{item.selectedQty}</div>
                     <div
-                      style={qtyBox(hoveredBtn === `inc-${item.id}`)}
-                      onClick={() => handleIncrement(item.id)}
-                      onMouseEnter={() => setHoveredBtn(`inc-${item.id}`)}
+                      style={qtyBox(hoveredBtn === `inc-${item._id}`)}
+                      onClick={() => handleIncrement(item._id, item.available_qty)}
+                      onMouseEnter={() => setHoveredBtn(`inc-${item._id}`)}
                       onMouseLeave={() => setHoveredBtn(null)}
                     >
                       +
                     </div>
                     <button
-                      style={removeBtn(hoveredRemove === item.id)}
-                      onClick={() => handleRemove(item.id)}
-                      onMouseEnter={() => setHoveredRemove(item.id)}
+                      style={removeBtn(hoveredRemove === item._id)}
+                      onClick={() => handleRemove(item._id)}
+                      onMouseEnter={() => setHoveredRemove(item._id)}
                       onMouseLeave={() => setHoveredRemove(null)}
                     >
                       Remove
@@ -254,7 +251,7 @@ function CartPage() {
             ))
           )}
 
-          {cartItems.length > 0 && (
+          {cart.length > 0 && (
             <>
               <hr style={hrLine} />
 

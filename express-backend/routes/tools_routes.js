@@ -21,43 +21,27 @@ router.get('/:id', (req, res) => {
 
 // CREATE tool
 router.post('/', (req, res) => {
-  const {
-    tool_id,
-    category_id,
-    name,
-    available_qty,
-    unit,
-    img,
-    quantity,
-    disposal_status 
-  } = req.body;
+  const { tool_id } = req.body;
 
-  // Validation
-  if (!tool_id || !category_id || !name || available_qty == null || !unit || quantity == null) {
-    console.log('❌ Missing data:', req.body); // Debug log
-    return res.status(400).json({ error: 'All required fields must be provided' });
-  }
+  tools.findOne({ tool_id: tool_id.trim() }, (err, existingTool) => {
+    if (err) return res.status(500).json({ error: err });
+    if (existingTool) {
+      return res.status(400).json({ error: 'Tool with this ID already exists' });
+    }
 
-  // Prepare new tool
-  const newTool = {
-    tool_id: tool_id.trim(),
-    category_id: category_id.trim(),
-    name: name.trim(),
-    available_qty: Number(available_qty),
-    unit: unit.trim(),
-    img: img?.trim() || '',
-    quantity: Number(quantity),
-    disposal_status: disposal_status?.trim() || '', 
-    createdAt: new Date()
-  };
+    const newTool = {
+      ...req.body,
+      tool_id: tool_id.trim(),
+      createdAt: new Date()
+    };
 
-  // Insert into database
-  tools.insert(newTool, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-    console.log('Inserted tool:', newDoc); // 
-    res.status(201).json(newDoc);
+    tools.insert(newTool, (err, newDoc) => {
+      if (err) return res.status(500).json({ error: err });
+      res.status(201).json(newDoc);
+    });
   });
 });
+
 
 
 // UPDATE tool

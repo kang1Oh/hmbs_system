@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import tempItemImg from '../assets/images/temp-item-img.png';
 import ItemAddedModal from './ItemAddedModal'; 
+import { useCart } from '../context/CartContext';
 
 function ItemDetail({ item, onClose }) {
   if (!item) return null;
 
+  const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
 
+  const handleAddToRequest = () => {
+    addToCart(item, quantity);
+    setShowModal(true);
+  };
+
   const handleIncrement = () => {
-    if (quantity < item.qty) setQuantity(prev => prev + 1);
+    if (quantity < item.available_qty) setQuantity(prev => prev + 1);
   };
 
   const handleDecrement = () => {
     if (quantity > 1) setQuantity(prev => prev - 1);
-  };
-
-  const handleAddToRequest = () => {
-    setShowModal(true);
   };
 
   const modalOverlay = {

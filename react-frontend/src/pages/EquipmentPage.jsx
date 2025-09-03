@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ItemCard from '../components/ItemCard';
@@ -10,47 +11,16 @@ import tempItemImg from '../assets/images/temp-item-img.png';
 import { FiSearch } from 'react-icons/fi';
 import { FaChevronLeft, FaChevronRight, FaChevronDown } from 'react-icons/fa';
 
-const CATEGORY_MAP = {
-  'All Products': () => true,
-  'Baking Pans/Trays': item => ['Metal Tray', 'Muffin Pan'].includes(item.name),
-  'Muffin Pan': item => item.name === 'Muffin Pan',
-  'Bowls': item => item.name === 'Mixing Bowl',
-  'Non-contact Tools': item => item.name === 'Non-contact Thermometer',
-};
-
 const TYPE_MAP = {
-  'Baking & Pastry Tools': item =>
-    ['Muffin Pan', 'Mixing Bowl', 'Measuring Cup', 'Whisk', 'Rolling Pin'].includes(item.name),
-  'Cookware': item => ['Metal Tray'].includes(item.name),
-  'Kitchen Equipment': item =>
-    ['Non-contact Thermometer', 'Cutting Board'].includes(item.name),
-  'Serving Tools': item => ['Serving Spoon'].includes(item.name),
-  'Dining & Utensils': item =>
-    ['Salad Plate', 'Dinner Fork', 'Brandy Snifter'].includes(item.name),
-  'Furniture & Fixtures': () => false,
+  'Kitchen Tools & Equipment': [1, 2, 3, 4],   // Baking & Pantry Tools, Cooking Wares, etc.
+  'Serving & Dining Essentials': [5, 7],       // Serving Tools, Dining Equipment
+  'Beverage & Barware': [6],                    // Bar Tools & Drinkware
+  'Storage, Cleaning, & Utility': [8, 9],      // Storage & Utility, Furnitures & Fixtures
 };
 
 function EquipmentsPage() {
-
-  const baseList = [
-    { name: 'Metal Tray' },
-    { name: 'Salad Plate' },
-    { name: 'Dinner Fork' },
-    { name: 'Brandy Snifter' },
-    { name: 'Mixing Bowl' },
-    { name: 'Muffin Pan' },
-    { name: 'Non-contact Thermometer' },
-    { name: 'Serving Spoon' },
-    { name: 'Cutting Board' },
-    { name: 'Rolling Pin' },
-    { name: 'Measuring Cup' },
-    { name: 'Whisk' },
-  ];
-
-  const equipmentList = Array.from({ length: 30 }, (_, i) => ({
-    ...baseList[i % baseList.length],
-    id: i + 1,
-  }));
+  const [tools, setTools] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('Recommended');
@@ -58,24 +28,82 @@ function EquipmentsPage() {
   const [type, setType] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const itemsPerPage = 12;
 
-  let filteredList = equipmentList
-    .filter(item => (CATEGORY_MAP[category] ? CATEGORY_MAP[category](item) : true))
-    .filter(item => (type ? TYPE_MAP[type](item) : true))
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get("/api/categories");
+        setCategories(res.data);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch tools from backend
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        const res = await axios.get('/api/tools');
+        setTools(res.data);
+      } catch (err) {
+        console.error('Failed to fetch tools:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTools();
+  }, []);
+
+  // Filtering
+  const categoryMap = categories.reduce((acc, c) => {
+    acc[c.category_id] = c.category_name;
+    return acc;
+  }, {});
+
+  const filteredList = tools
+    .filter(item => 
+      category === "All Products" 
+      ? true 
+      : categoryMap[item.category_id] === category
+    )
+    .filter(item => 
+      type 
+        ? TYPE_MAP[type]?.includes(Number(item.category_id)) 
+        : true
+    )
     .filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
 
-  let sortedList = [...filteredList];
+
+  // Sorting
+  const sortedList = [...filteredList];
   if (sort === 'Name (A-Z)') sortedList.sort((a, b) => a.name.localeCompare(b.name));
   else if (sort === 'Name (Z-A)') sortedList.sort((a, b) => b.name.localeCompare(a.name));
 
+  // Pagination
   const totalPages = Math.ceil(sortedList.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedList = sortedList.slice(startIndex, startIndex + itemsPerPage);
 
   const handlePrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
   const handleNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div style={{ textAlign: 'center', margin: '40px' }}>Loading equipment catalogue...</div>
+        <Footer />
+      </>
+    );
+  }
 
   const styles = {
     container: {
@@ -272,21 +300,33 @@ function EquipmentsPage() {
             <h3 style={styles.sectionTitle}>Browse by</h3>
             <hr style={styles.hr} />
             <ul style={styles.list}>
-              {Object.keys(CATEGORY_MAP).map(cat => (
+              <li
+                key="All Products"
+                style={styles.listItem(category === "All Products")}
+                onClick={() => {
+                  setCategory("All Products");
+                  setType("");
+                  setCurrentPage(1);
+                }}
+                title="All Products"
+              >
+                All Products
+              </li>
+
+              {categories.map(cat => (
                 <li
-                  key={cat}
-                  style={styles.listItem(category === cat)}
+                  key={cat._id}
+                  style={styles.listItem(category === cat.category_name)}
                   onClick={() => {
-                    setCategory(cat);
-                    setType('');
+                    setCategory(cat.category_name);
+                    setType("");
                     setCurrentPage(1);
                   }}
-                  title={cat}
+                  title={cat.category_name}
                 >
-                  {cat}
+                  {cat.category_name}
                 </li>
               ))}
-              <li style={styles.listItem(false)}>See More...</li>
             </ul>
 
             <h3 style={styles.sectionTitle}>Filter by Type</h3>
@@ -333,16 +373,16 @@ function EquipmentsPage() {
 
             {/* Item Grid */}
             <div style={styles.grid}>
-              {paginatedList.map((item, i) => (
+              {paginatedList.map((item) => (
                 <ItemCard
-                  key={i}
-                  name={
-                    <span style={styles.cardName} title={item.name}>
-                      {item.name}
-                    </span>
-                  }
+                  key={item._id}
+                  name={<span style={styles.cardName} title={item.name}>{item.name}</span>}
                   onClick={() =>
-                    setSelectedItem({ ...item, image: tempItemImg, price: 100 })
+                    setSelectedItem({
+                      ...item,
+                      image: item.img || tempItemImg,
+                      price: item.price || 100,
+                    })
                   }
                 />
               ))}

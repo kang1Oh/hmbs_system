@@ -3,13 +3,26 @@ const express = require('express');
 const router = express.Router();
 const { categories } = require('../models/db');
 
+// Utility function to remove duplicates by category_id
+function removeDuplicateCategories(docs) {
+  const seen = new Set();
+  return docs.filter(doc => {
+    if (seen.has(doc.category_id)) return false;
+    seen.add(doc.category_id);
+    return true;
+  });
+}
+
+// GET all categories (deduplicated)
 router.get('/', (req, res) => {
   categories.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
-    res.json(docs);
+    const uniqueDocs = removeDuplicateCategories(docs);
+    res.json(uniqueDocs);
   });
 });
 
+// GET category by MongoDB _id
 router.get('/:id', (req, res) => {
   categories.findOne({ _id: req.params.id }, (err, doc) => {
     if (err) return res.status(500).json({ error: err });
@@ -18,10 +31,11 @@ router.get('/:id', (req, res) => {
   });
 });
 
+// POST create new category
 router.post('/', (req, res) => {
   const { category_id, category_name } = req.body;
 
-  console.log('📥 Incoming body:', req.body); // 🔍 Debug log
+  console.log('📥 Incoming body:', req.body);
 
   if (!category_id || !category_name) {
     const missingFields = [];
@@ -40,7 +54,7 @@ router.post('/', (req, res) => {
   });
 });
 
-
+// PUT update category
 router.put('/:id', (req, res) => {
   categories.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numUpdated) => {
     if (err) return res.status(500).json({ error: err });
@@ -49,6 +63,7 @@ router.put('/:id', (req, res) => {
   });
 });
 
+// DELETE category
 router.delete('/:id', (req, res) => {
   categories.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
     if (err) return res.status(500).json({ error: err });

@@ -6,10 +6,12 @@ import userIcon from '../assets/user.png';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import LogoutModal from './LogoutModal';
+import { useCart } from '../context/CartContext';
 
 function Header() {
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
+  const { cart } = useCart();
+  const totalItems = cart.reduce((sum, item) => sum + item.selectedQty, 0);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const handleLogout = async () => {
@@ -143,7 +145,9 @@ function Header() {
           {/* Cart Icon with Badge */}
           <div style={{ position: 'relative' }} onClick={() => handleCartClick()}>
             <img src={handcartIcon} alt="Cart" style={iconStyle} />
-            <div style={badgeStyle}>{cartCount}</div>
+            {totalItems > 0 && (
+              <div style={badgeStyle}>{totalItems}</div>
+            )}
           </div>
 
           {/* User Icon */}
