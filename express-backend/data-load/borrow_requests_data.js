@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/borrow_requests.csv';
-const BASE_URL = 'http://localhost:8000/api/borrow-requests';
+const CSV_FILE = '../../csv_files/borrow_requests.csv';
+const BASE_URL = 'http://localhost:5000/api/borrow-requests'; 
 
 // 🧠 Read borrow requests from CSV
 function readBorrowRequestsFromCSV(filePath) {

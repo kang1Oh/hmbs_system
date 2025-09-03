@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/releases.csv';
-const BASE_URL = 'http://localhost:8000/api/releases'; // Change if your route differs
+const CSV_FILE = '../../csv_files/releases.csv';
+const BASE_URL = 'http://localhost:5000/api/releases'; 
 
 // 📥 Reads releases from CSV
 function readReleasesFromCSV(filePath) {

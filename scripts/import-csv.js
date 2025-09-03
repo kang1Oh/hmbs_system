@@ -13,7 +13,7 @@ const categoriesCSV = path.join(__dirname, '../csv_files/categories.csv');
 const toolsCSV = path.join(__dirname, '../csv_files/tools.csv');
 const borrowItemsCSV = path.join(__dirname, '../csv_files/borrow_items.csv');
 const releasesCSV = path.join(__dirname, '../csv_files/releases.csv');
-const statusesCSV = path.join(__dirname, '../csv_files/statuses.csv');  // New CSV added
+const statusesCSV = path.join(__dirname, '../csv_files/statuses.csv'); 
 
 // Define the NeDB databases (ensure these match the folder and file names of your .db files)
 const rolesDB = new Datastore({ filename: path.join(__dirname, '../databases/roles.db'), autoload: true });
@@ -51,4 +51,4 @@ importCSVData(categoriesCSV, categoriesDB);
 importCSVData(toolsCSV, toolsDB);
 importCSVData(borrowItemsCSV, borrowItemsDB);
 importCSVData(releasesCSV, releasesDB);
-importCSVData(statusesCSV, statusesDB); // Import approvals CSV
+importCSVData(statusesCSV, statusesDB); 

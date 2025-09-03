@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/tools.csv';
-const BASE_URL = 'http://localhost:8000/api/tools';
+const CSV_FILE = '../../csv_files/tools.csv';
+const BASE_URL = 'http://localhost:5000/api/tools'; 
 
 function readToolsFromCSV(filePath) {
   return new Promise((resolve, reject) => {
@@ -21,6 +21,7 @@ function readToolsFromCSV(filePath) {
         const name = row.name?.trim();
         const available_qty = row.available_qty?.trim();
         const unit = row.unit?.trim();
+        const price = row.price?.trim();
         const img = row.img?.trim() || '';
         const quantity = row.quantity?.trim();
         const disposal_status = row.disposal_status?.trim();
@@ -32,6 +33,7 @@ function readToolsFromCSV(filePath) {
             name,
             available_qty: parseInt(available_qty),
             unit,
+            price: price ? parseFloat(price) : null,
             img,
             quantity: parseInt(quantity),
             disposal_status,

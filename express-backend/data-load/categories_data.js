@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/categories.csv'; // Update path if needed
-const BASE_URL = 'http://localhost:8000/api/categories';
+const CSV_FILE = '../../csv_files/categories.csv';
+const BASE_URL = 'http://localhost:5000/api/categories'; 
 
 // 🔄 Read CSV rows with: category_id, category_name
 function readCategoriesFromCSV(filePath) {

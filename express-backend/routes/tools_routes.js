@@ -29,7 +29,7 @@ router.post('/', (req, res) => {
     unit,
     img,
     quantity,
-    disposal_status // <-- Add this field
+    disposal_status 
   } = req.body;
 
   // Validation
@@ -47,14 +47,14 @@ router.post('/', (req, res) => {
     unit: unit.trim(),
     img: img?.trim() || '',
     quantity: Number(quantity),
-    disposal_status: disposal_status?.trim() || '', // <-- Add this line
+    disposal_status: disposal_status?.trim() || '', 
     createdAt: new Date()
   };
 
   // Insert into database
   tools.insert(newTool, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err.message || err });
-    console.log('Inserted tool:', newDoc); // <-- Add this line
+    console.log('Inserted tool:', newDoc); // 
     res.status(201).json(newDoc);
   });
 });

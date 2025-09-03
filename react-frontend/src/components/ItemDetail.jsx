@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import tempItemImg from '../assets/images/temp-item-img.png';
-import ItemAddedModal from './ItemAddedModal'; // Import the modal
+import ItemAddedModal from './ItemAddedModal'; 
 
 function ItemDetail({ item, onClose }) {
   if (!item) return null;
@@ -156,7 +156,7 @@ function ItemDetail({ item, onClose }) {
         <ItemAddedModal
           onClose={() => {
             setShowModal(false);
-            onClose(); // ← this will close ItemDetail too
+            onClose(); 
           }}
         />
     )}

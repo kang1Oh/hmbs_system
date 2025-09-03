@@ -4,7 +4,7 @@ const csv = require('csv-parser');
 const axios = require('axios');
 
 const CSV_FILE = '../../csv_files/users.csv';
-const BASE_URL = 'http://localhost:5000/api/users'; // <- use the correct port
+const BASE_URL = 'http://localhost:5000/api/users'; 
 
 // Reads users from CSV with headers: user_id, role_id, email, password, name
 function readUsersFromCSV(filePath) {

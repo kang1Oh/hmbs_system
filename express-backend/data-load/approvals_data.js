@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/approvals.csv';
-const BASE_URL = 'http://localhost:8000/api/approvals'; // Update if needed
+const CSV_FILE = '../../csv_files/approvals.csv';
+const BASE_URL = 'http://localhost:5000/api/approvals'; 
 
 // 📥 Read approvals from CSV
 function readApprovalsFromCSV(filePath) {

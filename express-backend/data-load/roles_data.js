@@ -2,8 +2,8 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
 
-const CSV_FILE = '/Users/jaimeemanuellucero/Documents/hmbs_system/csv_files/roles.csv'; // Update path if needed
-const BASE_URL = 'http://localhost:8000/api/roles';
+const CSV_FILE = '../../csv_files/roles.csv';
+const BASE_URL = 'http://localhost:5000/api/roles'; 
 
 // Reads CSV with headers: role_id, role_name
 function readRolesFromCSV(filePath) {
