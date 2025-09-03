@@ -1,4 +1,4 @@
-﻿tool_id,category_id,name,available_qty,unit,price,img,quantity,disposal_status
+tool_id,category_id,name,available_qty,unit,price,img,quantity,disposal_status
 1,1,Rolling Pin,10,piece,100.00,,2,Good
 2,1,Measuring Cups,15,set,100.00,,1,Good
 3,2,Non-Stick Pots,5,piece,100.00,,1,Review
