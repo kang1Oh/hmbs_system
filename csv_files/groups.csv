@@ -1,9 +1,9 @@
-﻿requested_id,user_id,is_leader
-1,4,TRUE
-1,5,FALSE
+﻿request_id,user_id,is_leader
+1,6,TRUE
+1,7,FALSE
 2,6,TRUE
 2,7,FALSE
-3,4,FALSE
-3,5,TRUE
+3,6,FALSE
+3,7,TRUE
 4,6,TRUE
 4,7,FALSE

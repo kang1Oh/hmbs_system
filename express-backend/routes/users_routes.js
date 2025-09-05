@@ -116,5 +116,27 @@ router.post('/logout', (req, res) => {
   });
 });
 
+router.get('/search/:name', (req, res) => {
+  const regex = new RegExp(req.params.name, 'i');
+
+  users.find({ name: regex, role_id: '4' }, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    if (!docs || docs.length === 0) {
+      return res.json([]); // empty array
+    }
+
+    // Deduplicate by email
+    const unique = {};
+    docs.forEach(u => {
+      unique[u.email] = { _id: u._id, name: u.name, email: u.email };
+    });
+
+    res.json(Object.values(unique));
+  });
+});
+
+
+
 
 module.exports = router;

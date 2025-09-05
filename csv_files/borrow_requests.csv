@@ -1,5 +1,5 @@
-﻿request_id,student_id,status_id,request_slip_id,lab_date,date_requested
-1,4,2,98765,15/07/2024,12/07/2024,
-2,5,2,87654,16/07/2024,13/07/2024,
-3,6,1,76543,20/07/2024,16/07/2024,
-4,7,3,65432,18/07/2024,14/07/2024,
+﻿request_id,user_id,status_id,request_slip_id,lab_date,date_requested,lab_time,course
+1,6,2,98765,15/07/2024,12/07/2024,10:00 am,Hospitality Management
+2,7,2,87654,16/07/2024,13/07/2024,11:00 am,Hospitality Management
+3,6,1,76543,20/07/2024,16/07/2024,12:00 pm,Hospitality Management
+4,7,3,65432,18/07/2024,14/07/2024,1:00 pm,Hospitality Management

@@ -4,49 +4,200 @@ import Footer from '../components/Footer';
 import tempItemImg from '../assets/images/temp-item-img.png';
 import { FiTrash2 } from 'react-icons/fi';
 import RequestSubmittedModal from '../components/RequestSubmittedModal';
+import { useCart } from '../context/CartContext';
 
-function BorrowRequestForm() {
-  const [groupMembers, setGroupMembers] = useState(['']);
+  // Autocomplete sub-component
+  function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
+    const [suggestions, setSuggestions] = useState([]);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const fetchSuggestions = async (query) => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        return;
+      }
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/users/search/${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setSuggestions(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={value}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onChange={(e) => {
+            const q = e.target.value;
+            onChange(q);
+            setOpen(true);
+            fetchSuggestions(q);
+          }}
+          placeholder="Enter student name"
+          style={inputStyle}
+        />
+
+        {open && suggestions.length > 0 && (
+          <ul
+            style={{
+              position: "absolute",
+              listStyle: "none",
+              margin: 0,
+              fontSize: "14px",
+              padding: "6px 8px",
+              width: "100%",
+              borderRadius: '6px',
+              zIndex: 10,
+              maxHeight: "160px",
+              overflowY: "auto",
+              background: "#fff",
+              border: "1px solid #030303ff",
+            }}
+          >
+            {suggestions.map((s) => (
+              <li
+                key={s._id}
+                style={{ cursor: "pointer", padding: "5px 5px" }}
+                  // mousedown so it fires before input blur
+                  onMouseDown={() => {
+                  onSelect(s);
+                  setSuggestions([]);
+                  setOpen(false);
+                }}
+              >
+                {s.name} ({s.email})
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {open && value.trim() && !loading && suggestions.length === 0 && (
+          <div
+            style={{
+              position: "absolute",
+              background: "#fff",
+              border: "1px solid #030303ff",
+              fontSize: "14px",
+              padding: "6px 8px",
+              width: "100%",
+              zIndex: 10,
+              borderRadius: '6px',
+            }}
+          >
+            No student registered
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
+
+function BorrowRequestForm({user}) {
+  const { cart } = useCart();
+  const [groupMembers, setGroupMembers] = useState([{ _id: null, name: "" }]);
+  const [groupLeader, setGroupLeader] = useState({ _id: null, name: "" });
+
+  const [dateRequested, setDateRequested] = useState("");
+  const [dateUse, setDateUse] = useState("");
+  const [timeUse, setTimeUse] = useState("");
+  const [course, setCourse] = useState("");
+  const [isFormValid, setIsFormValid] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [dateRequested, setDateRequested] = useState('');
-  const [dateUse, setDateUse] = useState('');
-  const [timeUse, setTimeUse] = useState('');
-  const [groupLeader, setGroupLeader] = useState('');
-  const [course, setCourse] = useState('');
-  const [isFormValid, setIsFormValid] = useState(false);
+  const today = new Date().toISOString().split("T")[0];
 
-  const today = new Date().toISOString().split('T')[0];
-
-  const handleAddMember = () => {
-    setGroupMembers([...groupMembers, '']);
-  };
-
-  const handleRemoveMember = (index) => {
+  const handleAddMember = () =>
+    setGroupMembers([...groupMembers, { _id: null, name: "" }]);
+  const handleRemoveMember = (idx) => {
     if (groupMembers.length > 1) {
-      const updated = [...groupMembers];
-      updated.splice(index, 1);
-      setGroupMembers(updated);
+      setGroupMembers(groupMembers.filter((_, i) => i !== idx));
     }
   };
-
-  const handleMemberChange = (index, value) => {
+  const handleMemberChange = (idx, newVal) => {
     const updated = [...groupMembers];
-    updated[index] = value;
+    updated[idx] = newVal;
     setGroupMembers(updated);
   };
 
   useEffect(() => {
-    const hasEmptyMember = groupMembers.some(member => member.trim() === '');
-    const isValid = dateRequested && dateUse && timeUse && groupLeader && course && !hasEmptyMember;
-    setIsFormValid(isValid);
-  }, [dateRequested, dateUse, timeUse, groupLeader, course, groupMembers]);
+    const hasEmptyMember = groupMembers.some(
+      (m) => !m._id || m.name.trim() === ""
+    );
+    const validLeader = groupLeader._id && groupLeader.name.trim() !== "";
+    const valid =
+      dateRequested &&
+      dateUse &&
+      timeUse &&
+      course &&
+      validLeader &&
+      !hasEmptyMember &&
+      cart.length > 0;
+    setIsFormValid(valid);
+  }, [dateRequested, dateUse, timeUse, course, groupLeader, groupMembers, cart]);
 
-  const sampleItems = [
-    { id: 1, name: 'Stone 27cm Granule Dinner Plate', quantity: 12 },
-    { id: 2, name: 'Silver-Mirror Tea Spoon', quantity: 12 },
-    { id: 3, name: 'Crystal Wine Glass', quantity: 6 },
-  ];
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        user_id: user._id,
+        status_id: 1,
+        request_slip_id: Math.floor(Math.random() * 90000) + 10000,
+        lab_date: dateUse,
+        date_requested: dateRequested,
+        lab_time: timeUse,
+        course,
+      };
+
+      const res = await fetch("/api/borrow_requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const newRequest = await res.json();
+
+      const groupEntries = [
+        {
+          request_id: newRequest._id,
+          user_id: groupLeader._id,
+          is_leader: true,
+        },
+        ...groupMembers.map((m) => ({
+          request_id: newRequest._id,
+          user_id: m._id,
+          is_leader: false,
+        })),
+      ];
+
+      for (const entry of groupEntries) {
+        await fetch("/api/groups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry),
+        });
+      }
+
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error("Submit failed:", err);
+    }
+  };
+
+  const totalQty = cart.reduce((sum, item) => sum + item.selectedQty, 0);
+  const totalAmount = cart.reduce(
+    (sum, item) => sum + item.selectedQty * item.price,
+    0
+  );
+
 
   const formStyle = {
     fontFamily: "'Poppins', sans-serif",
@@ -137,6 +288,19 @@ function BorrowRequestForm() {
     marginTop: '16px',
   };
 
+  const totalSummaryStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: '20px',
+  };
+
+  const hrLine = {
+    margin: '20px 0',
+    border: 'none',
+    borderTop: '1px solid #ddd',
+  };
+
   const required = (text) => <span>{text} <span style={{ color: 'red' }}>*</span></span>;
 
   return (
@@ -148,6 +312,7 @@ function BorrowRequestForm() {
           <h2 style={sectionTitle}>Borrow Request Form</h2>
           <p style={subText}>Ensure all required fields are filled out before submitting</p>
 
+          {/* Dates + Time */}
           <div style={rowStyle}>
             <div style={{ flex: 1 }}>
               <label style={label}>{required('Date Requested')}</label>
@@ -180,46 +345,72 @@ function BorrowRequestForm() {
             </div>
           </div>
 
+          {/* Group Leader + Course */}
           <div style={rowStyle}>
             <div style={{ flex: 1 }}>
-              <label style={label}>{required('Group Leader')}</label>
-              <input type="text" placeholder="Enter full name" style={inputStyle} value={groupLeader} onChange={(e) => setGroupLeader(e.target.value)} />
+              <label style={label}>{required("Group Leader")}</label>
+              <AutocompleteInput
+                value={groupLeader.name}
+                onChange={(val) => setGroupLeader({ _id: null, name: val })}
+                onSelect={(u) => setGroupLeader({ _id: u._id, name: u.name })}
+                inputStyle={inputStyle}
+              />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={label}>{required('Course')}</label>
-              <select style={selectStyle} value={course} onChange={(e) => setCourse(e.target.value)}>
-                <option value="" disabled>Select a course</option>
-                <option value="Hospitality Management">Hospitality Management</option>
+              <label style={label}>{required("Course")}</label>
+              <select
+                style={selectStyle}
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+              >
+                <option value="" disabled>
+                  Select a course
+                </option>
+                <option value="Hospitality Management">
+                  Hospitality Management
+                </option>
               </select>
             </div>
           </div>
 
-          <label style={label}>Group Member</label>
+          {/* Group Members */}
+          <label style={label}>Group Members</label>
           {groupMembers.map((member, idx) => (
-            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "6px",
+              }}
+            >
               <div style={{ flex: 1 }}>
-                <input
-                  type="text"
-                  value={member}
-                  placeholder="Enter full name"
-                  onChange={(e) => handleMemberChange(idx, e.target.value)}
-                  style={inputStyle}
+                <AutocompleteInput
+                  value={member.name}
+                  onChange={(val) =>
+                    handleMemberChange(idx, { _id: null, name: val })
+                  }
+                  onSelect={(u) =>
+                    handleMemberChange(idx, { _id: u._id, name: u.name })
+                  }
+                  inputStyle={inputStyle}
                 />
               </div>
               {groupMembers.length > 1 && (
                 <button
                   onClick={() => handleRemoveMember(idx)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '40px',
-                    width: '40px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: '#991F1F'
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "40px",
+                    width: "40px",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    color: "#991F1F",
                   }}
                 >
                   <FiTrash2 size={20} />
@@ -232,32 +423,54 @@ function BorrowRequestForm() {
             onClick={handleAddMember}
             style={{
               ...submitBtn,
-              backgroundColor: '#fff',
-              color: '#991F1F',
-              border: '1px solid #991F1F',
-              fontSize: '14px',
-              padding: '10px 15px',
-              marginTop: '1px'
+              backgroundColor: "#fff",
+              color: "#991F1F",
+              border: "1px solid #991F1F",
+              fontSize: "14px",
+              padding: "10px 15px",
+              marginTop: "1px",
             }}
           >
             + Add New Member
           </button>
 
+          {/* Cart Items */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '40px', marginBottom: '16px' }}>
             <h3 style={sectionTitle}>List of Borrowed Items</h3>
-            <span style={totalLine}>Total ({sampleItems.length})</span>
+            <span style={totalLine}>Total ({cart.length})</span>
           </div>
 
-          {sampleItems.map(item => (
-            <div key={item.id} style={itemCard}>
-              <img src={tempItemImg} alt={item.name} style={imgStyle} />
-              <div>
-                <strong>{item.name}</strong>
-                <p style={{ margin: '4px 0', color: '#555' }}>Quantity: {item.quantity} pcs</p>
+          {cart.length === 0 ? (
+            <p style={{ color: '#777' }}>Your cart is empty.</p>
+          ) : (
+            cart.map(item => (
+              <div key={item._id} style={itemCard}>
+                <img src={tempItemImg} alt={item.name} style={imgStyle} />
+                <div>
+                  <strong>{item.name}</strong>
+                  <p style={{ margin: '4px 0', color: '#555' }}>
+                    Quantity: {item.selectedQty} {item.unit || 'pcs'}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
+            <hr style={hrLine} />
+              <div style={totalSummaryStyle}>
+                <div>
+                  <div style={{ fontSize: '20.5px', fontWeight: 600, marginBottom: '-3px' }}>Replacement Cost</div>
+                  <div style={{ fontSize: '15px', color: '#555' }}>
+                    {totalQty} item{totalQty > 1 ? 's' : ''}
+                  </div>
+                </div>
+                <div style={{ fontSize: '27px', fontWeight: 700, color: '#991F1F' }}>
+                  ₱{totalAmount.toLocaleString()}
+                </div>
+              </div>
+            <hr style={hrLine} />
+
+          {/* Submit */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end' }}>
             <button
               style={{

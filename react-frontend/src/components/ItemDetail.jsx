@@ -136,7 +136,7 @@ function ItemDetail({ item, onClose }) {
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <h2 style={{ fontWeight: 600, fontSize: '30px', marginBottom: '5px', lineHeight: '1.2', textAlign: 'left' }}>{item.name}</h2>
-            <p style={{ fontSize: '16px', color: '#555', marginBottom: '12px' }}>Available Qty: {item.qty}</p>
+            <p style={{ fontSize: '16px', color: '#555', marginBottom: '12px' }}>Available Qty: {item.available_qty}</p>
             <p style={{ color: '#991F1F', fontWeight: 600, fontSize: '25px', marginBottom: '20px' }}>$100.00</p>
 
             <div style={qtyControlsContainer}>

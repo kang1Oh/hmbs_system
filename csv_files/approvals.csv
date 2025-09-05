@@ -1,5 +1,5 @@
 ﻿approval_id,request_id,user_id,decision,remarks
 1,1,1,approved,Approved request
 2,2,2,approved,Approved request
-3,3,1,rejected,Not enough tools available
-4,4,2,approved,Approved request
+3,3,3,rejected,Not enough tools available
+4,4,4,approved,Approved request
