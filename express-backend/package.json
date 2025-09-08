@@ -13,7 +13,8 @@
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
     "nedb": "^1.8.0",
-    "nedm": "^0.0.1"
+    "nedm": "^0.0.1",
+    "pdfkit": "^0.17.2"
   },
   "scripts": {
     "start": "node server.js",

@@ -23,12 +23,21 @@ export const CartProvider = ({ children }) => {
             : i
         );
       }
-      return [...prev, { ...item, selectedQty: quantity }];
+      
+      return [
+        ...prev,
+        {
+          ...item,
+          _id: item._id,             // keep NeDB id for local state
+          tool_id: item.tool_id,     // ensure numeric id is saved too
+          selectedQty: quantity,
+        },
+      ];
     });
   };
 
   const removeFromCart = (id) => {
-    setCart(prev => prev.filter(item => item._id !== id));
+    setCart(prev => prev.filter(item => item._id === id));
   };
 
   const updateQuantity = (id, qty) => {

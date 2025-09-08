@@ -17,13 +17,13 @@ function readGroupsFromCSV(filePath) {
       .on('data', (row) => {
         console.log('🧾 Raw Row:', row);
 
-        const requested_id = row['requested_id']?.trim();
+        const request_id = row['request_id']?.trim();
         const user_id = row['user_id']?.trim();
         const is_leader_raw = row['is_leader']?.trim();
 
         if (requested_id && user_id && is_leader_raw !== undefined) {
           const parsed = {
-            requested_id,
+            request_id,
             user_id,
             is_leader: is_leader_raw.toLowerCase() === 'true' || is_leader_raw === '1'
           };

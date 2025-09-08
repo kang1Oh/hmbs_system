@@ -148,9 +148,10 @@ function BorrowRequestForm({user}) {
 
   const handleSubmit = async () => {
     try {
+      // 1. Create the borrow request
       const payload = {
-        user_id: user._id,
-        status_id: 1,
+        user_id: 6,
+        status_id: 1, // Pending
         request_slip_id: Math.floor(Math.random() * 90000) + 10000,
         lab_date: dateUse,
         date_requested: dateRequested,
@@ -158,13 +159,16 @@ function BorrowRequestForm({user}) {
         course,
       };
 
-      const res = await fetch("/api/borrow_requests", {
+      const res = await fetch("/api/borrow-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error("Borrow request failed");
       const newRequest = await res.json();
 
+      
+      // 2. Save group members
       const groupEntries = [
         {
           request_id: newRequest._id,
@@ -179,12 +183,33 @@ function BorrowRequestForm({user}) {
       ];
 
       for (const entry of groupEntries) {
-        await fetch("/api/groups", {
+        const groupRes = await fetch("/api/groups", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(entry),
         });
+        if (!groupRes.ok) throw new Error("Group entry failed");
       }
+
+      // 3. Save cart items linked to this request
+      for (const item of cart) {
+        const itemRes = await fetch("/api/borrow-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            request_id: newRequest._id,
+            tool_id: item.tool_id,
+            requested_qty: item.selectedQty,
+          }),
+        });
+        if (!itemRes.ok) throw new Error("Borrow items failed");
+      }
+
+      // 4. Ask backend to prepare PDF slip (not downloadable yet)
+      const pdfRes = await fetch(`/api/borrow-requests/${newRequest._id}/generate-pdf`, {
+        method: "POST",
+      });
+      if (!pdfRes.ok) throw new Error("Pdf generation failed");
 
       setIsModalOpen(true);
     } catch (err) {
@@ -478,7 +503,7 @@ function BorrowRequestForm({user}) {
                 opacity: isFormValid ? 1 : 0.6,
                 cursor: isFormValid ? 'pointer' : 'not-allowed'
               }}
-              onClick={() => isFormValid && setIsModalOpen(true)}
+              onClick={handleSubmit}
               disabled={!isFormValid}
             >
               Submit Borrow Request
