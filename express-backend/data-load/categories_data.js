@@ -65,4 +65,5 @@ async function testCategoriesAPI() {
   }
 }
 
-testCategoriesAPI();
+module.exports = { testCategoriesAPI };
+

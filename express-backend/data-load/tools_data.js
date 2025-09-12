@@ -1,10 +1,13 @@
+// tools_data.js
 const fs = require('fs');
 const csv = require('csv-parser');
+const { parse } = require('json2csv');
 const axios = require('axios');
 
 const CSV_FILE = '../../csv_files/tools.csv';
-const BASE_URL = 'http://localhost:5000/api/tools'; 
+const BASE_URL = 'http://localhost:5000/api/tools';
 
+// 🧠 Read tools from CSV
 function readToolsFromCSV(filePath) {
   return new Promise((resolve, reject) => {
     const tools = [];
@@ -14,8 +17,6 @@ function readToolsFromCSV(filePath) {
         mapHeaders: ({ header }) => header.replace(/^"+|"+$/g, '').trim()
       }))
       .on('data', (row) => {
-        console.log('🧾 Raw Row:', row);
-
         const tool_id = row.tool_id?.trim();
         const category_id = row.category_id?.trim();
         const name = row.name?.trim();
@@ -25,11 +26,12 @@ function readToolsFromCSV(filePath) {
         const img = row.img?.trim() || '';
         const quantity = row.quantity?.trim();
         const disposal_status = row.disposal_status?.trim();
+        const _id = row._id?.trim() || undefined;
 
         if (tool_id && category_id && name && available_qty && unit && quantity) {
           const parsedTool = {
-            tool_id,
-            category_id,
+            tool_id: Number(tool_id),
+            category_id: Number(category_id),
             name,
             available_qty: parseInt(available_qty),
             unit,
@@ -39,7 +41,8 @@ function readToolsFromCSV(filePath) {
             disposal_status,
           };
 
-          console.log('✅ Parsed tool:', parsedTool);
+          if (_id) parsedTool._id = _id; // preserve NeDB _id if present
+
           tools.push(parsedTool);
         } else {
           console.warn('⚠️ Skipping row due to missing required fields:', row);
@@ -50,10 +53,8 @@ function readToolsFromCSV(filePath) {
   });
 }
 
-
-
-// 🚀 Test the tools API
-async function testToolsAPI() {
+// 🚀 Seed tools into DB
+async function seedTools() {
   try {
     const tools = await readToolsFromCSV(CSV_FILE);
     console.log(`📄 Loaded ${tools.length} tools from CSV.`);
@@ -62,7 +63,6 @@ async function testToolsAPI() {
       try {
         const response = await axios.post(BASE_URL, tool);
         console.log(`✅ Created tool: ${tool.name}`);
-        console.log('📦 Response:', response.data);
       } catch (err) {
         if (err.response) {
           console.error(`❌ Failed to create "${tool.name}":`, err.response.data);
@@ -72,14 +72,38 @@ async function testToolsAPI() {
       }
     }
 
-    // 🧾 Fetch all tools
     const getAll = await axios.get(BASE_URL);
     console.log(`📋 Total tools in DB: ${getAll.data.length}`);
-    console.log('📂 Tools:', getAll.data);
-
   } catch (err) {
     console.error('❌ CSV or API error:', err.message);
   }
 }
 
-testToolsAPI();
+// 📤 Export DB state to CSV
+async function exportToolsToCSV() {
+  try {
+    const response = await axios.get(BASE_URL);
+    const tools = response.data;
+
+    const fields = [
+      'tool_id',
+      'category_id',
+      'name',
+      'available_qty',
+      'unit',
+      'price',
+      'img',
+      'quantity',
+      'disposal_status',
+      '_id', // append NeDB-generated ID at the end
+    ];
+
+    const csv = parse(tools, { fields });
+    fs.writeFileSync(CSV_FILE, csv);
+    console.log(`📤 Overwrote ${CSV_FILE} with ${tools.length} tools (including _id).`);
+  } catch (err) {
+    console.error('❌ Error exporting tools to CSV:', err.message);
+  }
+}
+
+module.exports = { seedTools, exportToolsToCSV };

@@ -54,16 +54,15 @@ function AboutPage() {
     textAlign: 'justify',
   };
 
-const staffSectionStyle = {
-  border: '1px solid #991F1F',
-  backgroundColor: 'rgba(255, 255, 255, 0.85)',
-  padding: '60px 60px 45px', 
-  margin: '10px auto 60px',
-  maxWidth: '1100px',
-  borderRadius: '18px',
-  minHeight: '380px',
-};
-
+  const staffSectionStyle = {
+    border: '1px solid #991F1F',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    padding: '60px 60px 45px', 
+    margin: '10px auto 60px',
+    maxWidth: '1100px',
+    borderRadius: '18px',
+    minHeight: '380px',
+  };
 
   const staffTitleStyle = {
     fontSize: '29px',

@@ -1,9 +1,11 @@
+// seeder: approvals_data.js
 const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
+const { Parser } = require('json2csv');
 
 const CSV_FILE = '../../csv_files/approvals.csv';
-const BASE_URL = 'http://localhost:5000/api/approvals'; 
+const BASE_URL = 'http://localhost:5000/api/approvals';
 
 // 📥 Read approvals from CSV
 function readApprovalsFromCSV(filePath) {
@@ -11,9 +13,11 @@ function readApprovalsFromCSV(filePath) {
     const approvals = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv({
-        mapHeaders: ({ header }) => header.trim().replace(/^"+|"+$/g, '') // Remove quotes & trim
-      }))
+      .pipe(
+        csv({
+          mapHeaders: ({ header }) => header.trim().replace(/^"+|"+$/g, ''), // Remove quotes & trim
+        })
+      )
       .on('data', (row) => {
         console.log('🧾 Raw Row:', row);
 
@@ -29,7 +33,7 @@ function readApprovalsFromCSV(filePath) {
             request_id,
             user_id,
             decision,
-            remarks
+            remarks,
           };
           console.log('✅ Parsed Approval:', parsed);
           approvals.push(parsed);
@@ -40,6 +44,37 @@ function readApprovalsFromCSV(filePath) {
       .on('end', () => resolve(approvals))
       .on('error', reject);
   });
+}
+
+// 📝 Write approvals (with NeDB _id) back to CSV
+async function exportApprovalsToCSV(data) {
+  try {
+    const fields = [
+      'approval_id',
+      'request_id',
+      'user_id',
+      'decision',
+      'remarks',
+      'nedb_id', // ✅ always last
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(
+      data.map((a) => ({
+        approval_id: a.approval_id,
+        request_id: a.request_id,
+        user_id: a.user_id,
+        decision: a.decision,
+        remarks: a.remarks,
+        nedb_id: a._id || '',
+      }))
+    );
+
+    fs.writeFileSync(CSV_FILE, csv);
+    console.log(`💾 Approvals exported to ${CSV_FILE}`);
+  } catch (err) {
+    console.error('❌ CSV export error:', err.message);
+  }
 }
 
 // 🚀 Load test data to approvals API
@@ -55,9 +90,15 @@ async function testApprovalsAPI() {
         console.log('📦 Response:', response.data);
       } catch (err) {
         if (err.response) {
-          console.error(`❌ Failed to create approval "${approval.approval_id}":`, err.response.data);
+          console.error(
+            `❌ Failed to create approval "${approval.approval_id}":`,
+            err.response.data
+          );
         } else {
-          console.error(`❌ Error posting approval "${approval.approval_id}":`, err.message);
+          console.error(
+            `❌ Error posting approval "${approval.approval_id}":`,
+            err.message
+          );
         }
       }
     }
@@ -67,9 +108,11 @@ async function testApprovalsAPI() {
     console.log(`📋 Total approvals in DB: ${getAll.data.length}`);
     console.log('📂 Approvals:', getAll.data);
 
+    // ✅ Export snapshot with nedb_id
+    await exportApprovalsToCSV(getAll.data);
   } catch (err) {
     console.error('❌ CSV or API error:', err.message);
   }
 }
 
-testApprovalsAPI();
+module.exports = { testApprovalsAPI, exportApprovalsToCSV };

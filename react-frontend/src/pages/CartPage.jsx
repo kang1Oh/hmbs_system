@@ -35,6 +35,7 @@ function CartPage() {
   };
 
   const handleRemove = (id) => {
+    console.log("Removing", id);
     removeFromCart(id);
   };
 

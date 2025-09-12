@@ -63,4 +63,5 @@ async function testStatusesAPI() {
   }
 }
 
-testStatusesAPI();
+module.exports = { testStatusesAPI };
+

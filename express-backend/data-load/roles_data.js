@@ -56,5 +56,5 @@ async function testRolesAPI() {
   }
 }
 
+module.exports = { testRolesAPI };
 
-testRolesAPI();
