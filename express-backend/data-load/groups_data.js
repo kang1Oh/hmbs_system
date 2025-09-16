@@ -24,6 +24,7 @@ function readGroupsFromCSV(filePath) {
         const request_id = row['request_id']?.trim();
         const user_id = row['user_id']?.trim();
         const is_leader_raw = row['is_leader']?.trim();
+        const _id = row['_id']?.trim() || undefined;
 
         if (request_id && user_id && is_leader_raw !== undefined) {
           const parsed = {
@@ -31,6 +32,7 @@ function readGroupsFromCSV(filePath) {
             user_id,
             is_leader:
               is_leader_raw.toLowerCase() === 'true' || is_leader_raw === '1',
+            _id, // include _id if present
           };
           console.log('✅ Parsed Group:', parsed);
           groups.push(parsed);
@@ -43,33 +45,6 @@ function readGroupsFromCSV(filePath) {
   });
 }
 
-// 📝 Write groups (with NeDB _id) back to CSV
-async function exportGroupsToCSV(data) {
-  try {
-    const fields = [
-      'request_id',
-      'user_id',
-      'is_leader',
-      'nedb_id', // ✅ always last column
-    ];
-
-    const parser = new Parser({ fields });
-    const csv = parser.parse(
-      data.map((g) => ({
-        request_id: g.request_id,
-        user_id: g.user_id,
-        is_leader: g.is_leader,
-        nedb_id: g._id || '',
-      }))
-    );
-
-    fs.writeFileSync(CSV_FILE, csv);
-    console.log(`💾 Groups exported to ${CSV_FILE}`);
-  } catch (err) {
-    console.error('❌ CSV export error:', err.message);
-  }
-}
-
 // 🚀 Load test data to API
 async function testGroupsAPI() {
   try {
@@ -78,7 +53,15 @@ async function testGroupsAPI() {
 
     for (const group of groups) {
       try {
-        const response = await axios.post(BASE_URL, group);
+        const payload = {
+          request_id: group.request_id,
+          user_id: group.user_id,
+          is_leader: group.is_leader,
+        };
+
+        if (group._id) payload._id = group._id; // preserve NeDB _id
+
+        const response = await axios.post(BASE_URL, payload);
         console.log(
           `✅ Added group: user ${group.user_id} in request ${group.request_id}`
         );
@@ -102,10 +85,40 @@ async function testGroupsAPI() {
     console.log(`📋 Total groups in DB: ${getAll.data.length}`);
     console.log('📂 Groups:', getAll.data);
 
-    // ✅ Export back to CSV with nedb_id
+    // ✅ Export back to CSV with _id
     await exportGroupsToCSV(getAll.data);
   } catch (err) {
     console.error('❌ CSV or API error:', err.message);
+  }
+}
+
+// 📝 Write groups (with NeDB _id) back to CSV
+async function exportGroupsToCSV() {
+  try {
+    const response = await axios.get(BASE_URL);
+    const groups = response.data;
+
+    const fields = [
+      'request_id',
+      'user_id',
+      'is_leader',
+      '_id', // ✅ last column, matches DB format
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(
+      groups.map((g) => ({
+        request_id: g.request_id,
+        user_id: g.user_id,
+        is_leader: g.is_leader,
+        _id: g._id || '',
+      }))
+    );
+
+    fs.writeFileSync(CSV_FILE, csv);
+    console.log(`💾 Groups exported to ${CSV_FILE}`);
+  } catch (err) {
+    console.error('❌ CSV export error:', err.message);
   }
 }
 

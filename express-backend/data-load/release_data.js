@@ -25,13 +25,15 @@ function readReleasesFromCSV(filePath) {
         const request_id = row['request_id']?.trim();
         const released_by = row['released_by']?.trim();
         const release_date = row['release_date']?.trim();
+        const nedb_id = row['nedb_id']?.trim();
 
         if (release_id && request_id && released_by && release_date) {
           const parsed = {
-            release_id,
-            request_id,
+            release_id: Number(release_id),
+            request_id: Number(request_id),
             released_by,
             release_date,
+            _id: nedb_id || undefined, // include _id if present
           };
           console.log('✅ Parsed Release:', parsed);
           releases.push(parsed);
@@ -45,8 +47,11 @@ function readReleasesFromCSV(filePath) {
 }
 
 // 📝 Write releases (with NeDB _id) back to CSV
-async function exportReleasesToCSV(data) {
+async function exportReleasesToCSV() {
   try {
+    const response = await axios.get(BASE_URL);
+    const releases = response.data;
+
     const fields = [
       'release_id',
       'request_id',
@@ -57,7 +62,7 @@ async function exportReleasesToCSV(data) {
 
     const parser = new Parser({ fields });
     const csv = parser.parse(
-      data.map((r) => ({
+      releases.map((r) => ({
         release_id: r.release_id,
         request_id: r.request_id,
         released_by: r.released_by,
@@ -72,6 +77,7 @@ async function exportReleasesToCSV(data) {
     console.error('❌ CSV export error:', err.message);
   }
 }
+
 
 // 🚀 Load releases into the API
 async function testReleasesAPI() {

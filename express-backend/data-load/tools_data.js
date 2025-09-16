@@ -85,6 +85,8 @@ async function exportToolsToCSV() {
     const response = await axios.get(BASE_URL);
     const tools = response.data;
 
+    tools.sort((a, b) => Number(a.tool_id) - Number(b.tool_id));
+    
     const fields = [
       'tool_id',
       'category_id',

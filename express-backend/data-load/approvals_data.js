@@ -15,7 +15,7 @@ function readApprovalsFromCSV(filePath) {
     fs.createReadStream(filePath)
       .pipe(
         csv({
-          mapHeaders: ({ header }) => header.trim().replace(/^"+|"+$/g, ''), // Remove quotes & trim
+          mapHeaders: ({ header }) => header.trim().replace(/^"+|"+$/g, ''), // Clean headers
         })
       )
       .on('data', (row) => {
@@ -26,6 +26,7 @@ function readApprovalsFromCSV(filePath) {
         const user_id = row['user_id']?.trim();
         const decision = row['decision']?.trim();
         const remarks = row['remarks']?.trim() || '';
+        const nedb_id = row['nedb_id']?.trim() || '';
 
         if (approval_id && request_id && user_id && decision) {
           const parsed = {
@@ -34,6 +35,7 @@ function readApprovalsFromCSV(filePath) {
             user_id,
             decision,
             remarks,
+            _id: nedb_id || undefined, // keep nedb_id if exists
           };
           console.log('✅ Parsed Approval:', parsed);
           approvals.push(parsed);
@@ -47,8 +49,11 @@ function readApprovalsFromCSV(filePath) {
 }
 
 // 📝 Write approvals (with NeDB _id) back to CSV
-async function exportApprovalsToCSV(data) {
+async function exportApprovalsToCSV() {
   try {
+    const response = await axios.get(BASE_URL);
+    const approvals = response.data;
+
     const fields = [
       'approval_id',
       'request_id',
@@ -60,7 +65,7 @@ async function exportApprovalsToCSV(data) {
 
     const parser = new Parser({ fields });
     const csv = parser.parse(
-      data.map((a) => ({
+      approvals.map((a) => ({
         approval_id: a.approval_id,
         request_id: a.request_id,
         user_id: a.user_id,
@@ -77,6 +82,7 @@ async function exportApprovalsToCSV(data) {
   }
 }
 
+
 // 🚀 Load test data to approvals API
 async function testApprovalsAPI() {
   try {
@@ -85,7 +91,9 @@ async function testApprovalsAPI() {
 
     for (const approval of approvals) {
       try {
-        const response = await axios.post(BASE_URL, approval);
+        const payload = { ...approval };
+        // If re-seeding from snapshot, _id may exist; up to API whether to respect it
+        const response = await axios.post(BASE_URL, payload);
         console.log(`✅ Created approval: ${approval.approval_id}`);
         console.log('📦 Response:', response.data);
       } catch (err) {

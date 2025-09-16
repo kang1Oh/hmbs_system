@@ -4,7 +4,7 @@ async function runSeeders() {
     console.log("🔄 Resetting and seeding all collections...");
 
     const { seedUsers } = require('../data-load/users_data');
-    const { testToolsAPI } = require('../data-load/tools_data');
+    const { seedTools } = require('../data-load/tools_data');
     const { testApprovalsAPI } = require('../data-load/approvals_data');
     const { testBorrowItemsAPI } = require('../data-load/borrow_items_data');
     const { testBorrowRequestsAPI } = require('../data-load/borrow_requests_data');
@@ -18,7 +18,7 @@ async function runSeeders() {
     await seedUsers();
     await testRolesAPI();
     await testCategoriesAPI();
-    await testToolsAPI();
+    await seedTools();
     await testBorrowRequestsAPI();
     await testGroupsAPI();
     await testBorrowItemsAPI();

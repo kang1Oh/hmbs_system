@@ -1,8 +1,4 @@
-{"approval_id":"1","request_id":"1","user_id":"1","decision":"approved","remarks":"Approved request","_id":"0lOBrk5dU6VVrzE9"}
-{"approval_id":"1","request_id":"1","user_id":"1","decision":"approved","remarks":"Approved for rolling pin and measuring cups","_id":"3CVCoN9MDQbbfJuj"}
-{"approval_id":"3","request_id":"3","user_id":"3","decision":"rejected","remarks":"Not enough tools available","_id":"Go7EhXzZykKEYrBC"}
-{"approval_id":"2","request_id":"2","user_id":"2","decision":"approved","remarks":"Approved for non-stick pots and stainless steel pans","_id":"HGhdoz1oBFhVK8Jv"}
-{"approval_id":"3","request_id":"3","user_id":"1","decision":"rejected","remarks":"Not enough tools available","_id":"Nf9bTPnRLPGmJC5X"}
-{"approval_id":"2","request_id":"2","user_id":"2","decision":"approved","remarks":"Approved request","_id":"TMukBdHWk3Fu4zxv"}
-{"approval_id":"4","request_id":"4","user_id":"4","decision":"approved","remarks":"Approved request","_id":"dbVKp01dkOguw0kx"}
-{"approval_id":"4","request_id":"4","user_id":"2","decision":"approved","remarks":"Approved for food processor and stand mixer","_id":"fzJnMMSPsdXVTgRp"}
+{"approval_id":"2","request_id":"2","user_id":"2","decision":"approved","remarks":"Approved request","_id":"6AaHWO1SBUFfySoI"}
+{"approval_id":"4","request_id":"4","user_id":"4","decision":"approved","remarks":"Approved request","_id":"Ak99kFA9DNH4i1UT"}
+{"approval_id":"3","request_id":"3","user_id":"3","decision":"rejected","remarks":"Not enough tools available","_id":"OldN3AXZP9pjmCPA"}
+{"approval_id":"1","request_id":"1","user_id":"1","decision":"approved","remarks":"Approved request","_id":"zdSvKAZOaxBhlmSU"}

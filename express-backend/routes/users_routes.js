@@ -40,6 +40,14 @@ router.get('/', (req, res) => {
   });
 });
 
+// GET all users (unsafe, includes password) – for internal seeder/export only
+router.get('/with-passwords', (req, res) => {
+  users.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(docs); // includes password
+  });
+});
+
 // POST create user. Assign numeric user_id if absent.
 router.post('/', (req, res) => {
   const body = { ...req.body };

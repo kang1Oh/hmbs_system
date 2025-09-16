@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'models');
+const DB_PATH = path.join(__dirname, '..', 'models');
 const dbFiles = [
   'users.db',
   'tools.db',

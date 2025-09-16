@@ -1,4 +1,4 @@
-// seeder.js
+// seeder: borrow_requests_data.js
 const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
@@ -23,18 +23,17 @@ function readBorrowRequestsFromCSV(filePath) {
         console.log('🧾 Raw Row:', row);
 
         const {
-          request_id,
-          user_id,        
+          user_id,
           status_id,
           request_slip_id,
           lab_date,
           date_requested,
           lab_time,
           course,
+          _id, // 👈 pick up NeDB id if present
         } = row;
 
         if (
-          request_id &&
           user_id &&
           status_id &&
           request_slip_id &&
@@ -42,7 +41,6 @@ function readBorrowRequestsFromCSV(filePath) {
           date_requested
         ) {
           const parsed = {
-            request_id: request_id.trim(),
             user_id: user_id.trim(),
             status_id: status_id.trim(),
             request_slip_id: request_slip_id.trim(),
@@ -50,6 +48,7 @@ function readBorrowRequestsFromCSV(filePath) {
             date_requested: date_requested.trim(),
             lab_time: lab_time ? lab_time.trim() : '',
             course: course ? course.trim() : '',
+            _id: _id?.trim() || undefined, // 👈 preserve _id
           };
           console.log('✅ Parsed:', parsed);
           requests.push(parsed);
@@ -62,43 +61,6 @@ function readBorrowRequestsFromCSV(filePath) {
   });
 }
 
-// 📝 Write borrow requests (with NeDB _id) back to CSV
-async function exportBorrowRequestsToCSV(data) {
-  try {
-    const fields = [
-      'request_id',
-      'user_id',
-      'status_id',
-      'request_slip_id',
-      'lab_date',
-      'date_requested',
-      'lab_time',
-      'course',
-      'nedb_id', // ✅ new column at the end
-    ];
-
-    const parser = new Parser({ fields });
-    const csv = parser.parse(
-      data.map((req) => ({
-        request_id: req.request_id,
-        user_id: req.user_id,
-        status_id: req.status_id,
-        request_slip_id: req.request_slip_id,
-        lab_date: req.lab_date,
-        date_requested: req.date_requested,
-        lab_time: req.lab_time || '',
-        course: req.course || '',
-        nedb_id: req._id || '',
-      }))
-    );
-
-    fs.writeFileSync(CSV_FILE, csv);
-    console.log(`💾 Borrow requests exported to ${CSV_FILE}`);
-  } catch (err) {
-    console.error('❌ CSV export error:', err.message);
-  }
-}
-
 // 🚀 Load test data to API
 async function testBorrowRequestsAPI() {
   try {
@@ -107,17 +69,29 @@ async function testBorrowRequestsAPI() {
 
     for (const request of requests) {
       try {
-        await axios.post(BASE_URL, request);
-        console.log(`✅ Created request_id: ${request.request_id}`);
+        const payload = {
+          user_id: Number(request.user_id),
+          status_id: Number(request.status_id),
+          request_slip_id: Number(request.request_slip_id),
+          lab_date: request.lab_date,
+          date_requested: request.date_requested,
+          lab_time: request.lab_time,
+          course: request.course,
+        };
+
+        if (request._id) payload._id = request._id; // 👈 reuse NeDB id if exists
+
+        await axios.post(BASE_URL, payload);
+        console.log(`✅ Created borrow request for user_id: ${request.user_id}`);
       } catch (err) {
         if (err.response) {
           console.error(
-            `❌ Failed to create request_id "${request.request_id}":`,
+            `❌ Failed to create borrow request for user_id "${request.user_id}":`,
             err.response.data
           );
         } else {
           console.error(
-            `❌ Error posting request_id "${request.request_id}":`,
+            `❌ Error posting borrow request for user_id "${request.user_id}":`,
             err.message
           );
         }
@@ -128,10 +102,48 @@ async function testBorrowRequestsAPI() {
     console.log(`📋 Total borrow requests in DB: ${getAll.data.length}`);
     console.log('📂 Requests:', getAll.data);
 
-    // ✅ Export back to CSV with nedb_id
+    // ✅ Export back to CSV with _id
     await exportBorrowRequestsToCSV(getAll.data);
   } catch (err) {
     console.error('❌ CSV or API error:', err.message);
+  }
+}
+
+// 📝 Write borrow requests (with NeDB _id) back to CSV
+async function exportBorrowRequestsToCSV(data) {
+  try {
+    const response = await axios.get(BASE_URL);
+    const borrowRequests = response.data;
+
+    const fields = [
+      'user_id',
+      'status_id',
+      'request_slip_id',
+      'lab_date',
+      'date_requested',
+      'lab_time',
+      'course',
+      '_id', // ✅ last column, matches DB format
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(
+      borrowRequests.map((req) => ({
+        user_id: req.user_id,
+        status_id: req.status_id,
+        request_slip_id: req.request_slip_id,
+        lab_date: req.lab_date,
+        date_requested: req.date_requested,
+        lab_time: req.lab_time || '',
+        course: req.course || '',
+        _id: req._id || '',
+      }))
+    );
+
+    fs.writeFileSync(CSV_FILE, csv);
+    console.log(`💾 Borrow requests exported to ${CSV_FILE}`);
+  } catch (err) {
+    console.error('❌ CSV export error:', err.message);
   }
 }
 

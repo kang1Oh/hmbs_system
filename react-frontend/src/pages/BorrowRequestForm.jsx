@@ -177,16 +177,18 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
 // ---------------- Main Form ----------------
 function BorrowRequestForm() {
   const { cart, clearCart } = useCart();
+
   const [groupMembers, setGroupMembers] = useState([{ _id: null, name: "" }]);
   const [groupLeader, setGroupLeader] = useState({ _id: null, name: "" });
   const [dateRequested, setDateRequested] = useState("");
   const [dateUse, setDateUse] = useState("");
   const [timeUse, setTimeUse] = useState("");
+  const today = new Date().toISOString().split("T")[0];
   const [course, setCourse] = useState("");
+
   const [isFormValid, setIsFormValid] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const today = new Date().toISOString().split("T")[0];
+  
 
   useEffect(() => {
     const hasEmptyMember = groupMembers.some((m) => !m._id || !m.name.trim());
@@ -209,9 +211,13 @@ function BorrowRequestForm() {
   };
 
   const handleSubmit = async () => {
+
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (!storedUser) throw new Error("No logged in user found");
+
     try {
       const payload = {
-        user_id: 6,
+        user_id: storedUser.user_id,
         status_id: 1,
         request_slip_id: Math.floor(Math.random() * 90000) + 10000,
         lab_date: dateUse,

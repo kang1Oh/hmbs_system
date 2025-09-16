@@ -1,19 +1,19 @@
-tool_id,category_id,name,available_qty,unit,price,img,quantity,disposal_status
-1,1,Rolling Pin,10,piece,100.00,,2,Good
-2,1,Measuring Cups,15,set,100.00,,1,Good
-3,2,Non-Stick Pots,5,piece,100.00,,1,Review
-4,2,Stainless Steel Pans,8,piece,100.00,,1,Good
-5,3,Blender,10,piece,100.00,,2,Good
-6,3,Peeler,20,piece,100.00,,1,Good
-7,4,Food Processor,6,piece,100.00,,1,Review
-8,4,Stand Mixer,4,piece,100.00,,1,Dispose
-9,5,Serving Tray,15,piece,100.00,,2,Good
-10,5,Serving Spoon,25,piece,100.00,,3,Good
-11,6,Cocktail Shaker,12,piece,100.00,,1,Good
-12,6,Bar Glasses,30,set,100.00,,2,Good
-13,7,Tableware Set,50,set,100.00,,5,Good
-14,7,Dining Chairs,20,piece,100.00,,3,Good
-15,8,Storage Bins,40,piece,100.00,,1,Good
-16,8,Shelving Units,10,unit,100.00,,1,Good
-17,9,Conference Tables,5,piece,100.00,,1,Review
-18,9,Event Chairs,30,piece,100.00,,3,Good
+"tool_id","category_id","name","available_qty","unit","price","img","quantity","disposal_status","_id"
+"1",1,"Rolling Pin",10,"piece",100,"",2,"Good","lGYmvdXjGWRvNAY6"
+"2",1,"Measuring Cups",15,"set",100,"",1,"Good","mWI0tvxBIem9GOER"
+"3",2,"Non-Stick Pots",5,"piece",100,"",1,"Review","GSCN3BDmiHMwPcLg"
+"4",2,"Stainless Steel Pans",8,"piece",100,"",1,"Good","suq4ViyUNcsrXYZo"
+"5",3,"Blender",10,"piece",100,"",2,"Good","TT9kWu8AdWWdRdSU"
+"6",3,"Peeler",20,"piece",100,"",1,"Good","smZs0JuoHBHDYImz"
+"7",4,"Food Processor",6,"piece",100,"",1,"Review","d6xgeBAr4XfRFvKB"
+"8",4,"Stand Mixer",4,"piece",100,"",1,"Dispose","CPpCsN6V8pvWmkcW"
+"9",5,"Serving Tray",15,"piece",100,"",2,"Good","a96cCUfR6gAm8yXU"
+"10",5,"Serving Spoon",25,"piece",100,"",3,"Good","l7oRraa0z9MlFNeN"
+"11",6,"Cocktail Shaker",12,"piece",100,"",1,"Good","b6he2KXuyd8pvYWg"
+"12",6,"Bar Glasses",30,"set",100,"",2,"Good","Z809XdMCCxQ4NI3m"
+"13",7,"Tableware Set",50,"set",100,"",5,"Good","ZUTYPKugG9Rm9cOs"
+"14",7,"Dining Chairs",20,"piece",100,"",3,"Good","eZJHjtZQgLGqXNoY"
+"15",8,"Storage Bins",40,"piece",100,"",1,"Good","6spSKqnwvjH0zr5i"
+"16",8,"Shelving Units",10,"unit",100,"",1,"Good","8b7iMJvevKuswYSp"
+"17",9,"Conference Tables",5,"piece",100,"",1,"Review","oTFx0tKES1yXr7nc"
+"18",9,"Event Chairs",30,"piece",100,"",3,"Good","jAvOBVTOLC8Pxyjw"
