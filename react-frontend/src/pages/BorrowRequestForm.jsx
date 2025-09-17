@@ -5,6 +5,7 @@ import tempItemImg from "../assets/images/temp-item-img.png";
 import { FiTrash2 } from "react-icons/fi";
 import RequestSubmittedModal from "../components/RequestSubmittedModal";
 import { useCart } from "../context/CartContext";
+import axios from "axios";
 
 // ---------------- Styles ----------------
 const styles = {
@@ -188,7 +189,25 @@ function BorrowRequestForm() {
 
   const [isFormValid, setIsFormValid] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [hasOngoingRequest, setHasOngoingRequest] = useState(false);
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (!storedUser) return;
+
+    const checkOngoing = async () => {
+      try {
+        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+        const ongoing = requests.some(
+          (r) => r.status_id !== 5 && r.status_id !== 6
+        );
+        setHasOngoingRequest(ongoing);
+      } catch (err) {
+        console.error("Failed to fetch requests:", err);
+      }
+    };
+    checkOngoing();
+  }, []);
 
   useEffect(() => {
     const hasEmptyMember = groupMembers.some((m) => !m._id || !m.name.trim());
@@ -211,7 +230,6 @@ function BorrowRequestForm() {
   };
 
   const handleSubmit = async () => {
-
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (!storedUser) throw new Error("No logged in user found");
 
@@ -225,14 +243,11 @@ function BorrowRequestForm() {
         lab_time: timeUse,
         course,
       };
-      const res = await fetch("/api/borrow-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Borrow request failed");
-      const newRequest = await res.json();
 
+      // create borrow request
+      const { data: newRequest } = await axios.post("/api/borrow-requests", payload);
+
+      // insert group entries
       const groupEntries = [
         { request_id: newRequest._id, user_id: groupLeader._id, is_leader: true },
         ...groupMembers.map((m) => ({
@@ -241,34 +256,23 @@ function BorrowRequestForm() {
           is_leader: false,
         })),
       ];
-      await Promise.all(
-        groupEntries.map((entry) =>
-          fetch("/api/groups", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(entry),
-          })
-        )
-      );
+      await Promise.all(groupEntries.map((entry) => axios.post("/api/groups", entry)));
 
+      // insert borrow items
       await Promise.all(
         cart.map((item) =>
-          fetch("/api/borrow-items", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              request_id: newRequest._id,
-              tool_id: item.tool_id,
-              requested_qty: item.selectedQty,
-            }),
+          axios.post("/api/borrow-items", {
+            request_id: newRequest._id,
+            tool_id: item.tool_id,
+            requested_qty: item.selectedQty,
           })
         )
       );
 
-      await fetch(`/api/borrow-requests/${newRequest._id}/generate-pdf`, {
-        method: "POST",
-      });
+      // generate PDF
+      await axios.post(`/api/borrow-requests/${newRequest._id}/generate-pdf`);
 
+      // clear state
       clearCart();
       setDateUse("");
       setDateRequested("");
@@ -456,18 +460,17 @@ function BorrowRequestForm() {
           </div>
           <hr style={styles.hr} />
 
-          {/* Submit */}
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button
               style={{
                 ...styles.submitBtn,
-                opacity: isFormValid ? 1 : 0.6,
-                cursor: isFormValid ? "pointer" : "not-allowed",
+                opacity: isFormValid && !hasOngoingRequest ? 1 : 0.6,
+                cursor: isFormValid && !hasOngoingRequest ? "pointer" : "not-allowed",
               }}
               onClick={handleSubmit}
-              disabled={!isFormValid}
+              disabled={!isFormValid || hasOngoingRequest}
             >
-              Submit Borrow Request
+              {hasOngoingRequest ? "Ongoing Request Exists" : "Submit Borrow Request"}
             </button>
           </div>
         </div>

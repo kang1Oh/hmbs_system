@@ -48,6 +48,28 @@ router.get('/with-passwords', (req, res) => {
   });
 });
 
+// GET a user by numeric user_id or _id
+router.get('/:id', (req, res) => {
+  findUserById(req.params.id, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'User not found' });
+    const { password, ...safeDoc } = doc;
+    res.json(safeDoc);
+  });
+});
+
+// SEARCH by name limited to students (role_id 4)
+router.get('/search/:name', (req, res) => {
+  const regex = new RegExp(req.params.name, 'i');
+  users.find({ name: regex, role_id: { $in: [4, "4"]} }, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!docs || docs.length === 0) return res.json([]);
+    const unique = {};
+    docs.forEach(u => { unique[u.email] = { _id: u._id, user_id: u.user_id, name: u.name, email: u.email }; });
+    res.json(Object.values(unique));
+  });
+});
+
 // POST create user. Assign numeric user_id if absent.
 router.post('/', (req, res) => {
   const body = { ...req.body };
@@ -111,51 +133,6 @@ router.post('/logout', (req, res) => {
   });
 });
 
-// SEARCH by name limited to students (role_id 4)
-router.get('/search/:name', (req, res) => {
-  const regex = new RegExp(req.params.name, 'i');
-  users.find({ name: regex, role_id: { $in: [4, "4"]} }, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!docs || docs.length === 0) return res.json([]);
-    const unique = {};
-    docs.forEach(u => { unique[u.email] = { _id: u._id, user_id: u.user_id, name: u.name, email: u.email }; });
-    res.json(Object.values(unique));
-  });
-});
-
-// EXPORT current DB to CSV and overwrite seeder CSV file
-router.get('/export', requireAuth, (req, res) => {
-  users.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-
-    const fields = ['user_id', 'role_id', 'email', 'password', 'name', '_id'];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
-
-    const csvPath = path.join(__dirname, '..', 'csv_files', 'users.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      // continue and still offer download
-      console.error('Failed to write seed CSV:', e.message);
-    }
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('users.csv');
-    res.send(csv);
-  });
-});
-
-// GET a user by numeric user_id or _id
-router.get('/:id', (req, res) => {
-  findUserById(req.params.id, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'User not found' });
-    const { password, ...safeDoc } = doc;
-    res.json(safeDoc);
-  });
-});
-
 // PUT update by numeric user_id or _id
 router.put('/:id', (req, res) => {
   const id = req.params.id;
@@ -183,4 +160,26 @@ router.delete('/:id', (req, res) => {
   });
 });
 
+// EXPORT current DB to CSV and overwrite seeder CSV file
+router.get('/export', requireAuth, (req, res) => {
+  users.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    const fields = ['user_id', 'role_id', 'email', 'password', 'name', '_id'];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(docs);
+
+    const csvPath = path.join(__dirname, '..', 'csv_files', 'users.csv');
+    try {
+      fs.writeFileSync(csvPath, csv);
+    } catch (e) {
+      // continue and still offer download
+      console.error('Failed to write seed CSV:', e.message);
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('users.csv');
+    res.send(csv);
+  });
+});
 module.exports = router;

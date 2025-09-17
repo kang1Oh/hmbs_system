@@ -1,10 +1,11 @@
 // No changes to imports
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import itemImage from '../assets/images/temp-item-img.png';
 import progressChecked from '../assets/progress-checked.svg';
 import { FaChevronDown } from 'react-icons/fa';
+import axios from 'axios';
 
 function TransactionPage() {
   const steps = [
@@ -15,8 +16,11 @@ function TransactionPage() {
     'Returned All in Good Condition',
   ];
 
-  const currentStep = 0;
+  const [currentStep, setCurrentStep] = useState(null);
   const [expandedIndex, setExpandedIndex] = useState(null);
+  const [remarks, setRemarks] = useState('');
+  const [activeRequest, setActiveRequest] = useState(null);
+  const [historyRequests, setHistoryRequests] = useState([]);
 
   const toggleExpand = (index) => {
     setExpandedIndex(expandedIndex === index ? null : index);
@@ -75,62 +79,212 @@ function TransactionPage() {
     verticalAlign: 'middle',
   };
 
-  const renderStatusTracker = () => (
-    <div style={{ ...cardStyle, padding: '30px 24px', backgroundColor: 'rgba(255,255,255,0.95)' }}>
-      <p style={{ fontSize: '17px', fontWeight: 600, margin: '0 0 2px 15px', lineHeight: 1.2 }}>
-        Current Status
-      </p>
-      <p style={{ fontSize: '15px', color: '#444', fontWeight: 400, margin: '0 0 20px 15px', lineHeight: 1.2 }}>
-        Borrowing request has been submitted for approval.
-      </p>
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-        <div
-          style={{
-            position: 'absolute',
-            top: '48px',
-            left: '8%',
-            right: '8%',
-            height: '2px',
-            backgroundColor: '#991F1F',
-            zIndex: 0,
-          }}
-        />
-        {steps.map((label, index) => {
-          const isActive = index === currentStep;
-          return (
-            <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, flex: 1 }}>
-              <div
-                style={{
-                  width: '85px',
-                  height: '85px',
-                  borderRadius: '50%',
-                  backgroundColor: isActive ? '#991F1F' : '#fff',
-                  border: '2px solid #991F1F',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px',
-                }}
-              >
-                <img
-                  src={progressChecked}
-                  alt="Step"
+  //request status fetch
+  useEffect(() => {
+    const fetchRequest = async () => {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (!storedUser) return;
+
+        const res = await axios.get("/api/borrow-requests");
+        const userRequests = res.data.filter(r => r.user_id === storedUser.user_id);
+
+        // only refer to the latest request ID
+        if (userRequests.length > 0) {
+          const latestRequest = userRequests[userRequests.length - 1];
+          setActiveRequest(latestRequest);
+          setCurrentStep(latestRequest.status_id);
+
+          // decide remarks
+          if (latestRequest.status_id === 1) {
+            setRemarks("Borrowing request has been submitted for approval.");
+          } else if (latestRequest.status_id === 2 || latestRequest.status_id === 6) {
+            const approvalsRes = await axios.get("/api/approvals");
+            const approval = approvalsRes.data.find(a => a.request_id == latestRequest.request_slip_id);
+            setRemarks(approval ? approval.remarks : '');
+          } else if (latestRequest.status_id === 3) {
+            setRemarks("Your items have been released.");
+          } else if (latestRequest.status_id === 4) {
+            setRemarks("Your returned items are currently under review.");
+          } else if (latestRequest.status_id === 5) {
+            setRemarks("All items have been returned in good condition.");
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching borrow requests:", err);
+      }
+    };
+
+    fetchRequest();
+  }, []);
+
+  //active request fetch with items
+  useEffect(() => {
+    const fetchActiveRequest = async () => {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser) return;
+
+      try {
+        // 1. get all requests for this user
+        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+        const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
+        if (!active) {
+          setActiveRequest(null);
+          return;
+        }
+
+        // 2. get all borrow items for this request
+        const { data: allItems } = await axios.get(`/api/borrow-items`);
+        const requestItems = allItems.filter(i => i.request_id === active._id);
+
+        // 3. enrich with tool details
+        const enrichedItems = await Promise.all(
+          requestItems.map(async (i) => {
+            const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+            return {
+              ...i,
+              name: tool.name,
+              unit: tool.unit,
+              price: tool.price,
+              img: tool.img || itemImage,
+            };
+          })
+        );
+
+        setActiveRequest({ ...active, items: enrichedItems || [] });
+      } catch (err) {
+        console.error("Failed to fetch active request:", err);
+      }
+    };
+
+    fetchActiveRequest();
+  }, []);
+
+  //transaction history fetch
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser) return;
+
+      try {
+        // 1. get all requests for this user
+        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+
+        // 2. only keep completed ones (status_id = 5)
+        const completed = requests.filter(r => r.status_id === 5);
+
+        // 3. get all borrow items
+        const { data: allItems } = await axios.get(`/api/borrow-items`);
+
+        // 4. get all users (so we can match group members)
+        const { data: allUsers } = await axios.get(`/api/users`);
+
+        // 5. enrich each completed request with items + tools + group members
+        const enrichedRequests = await Promise.all(
+          completed.map(async (req) => {
+            // items
+            const requestItems = allItems.filter(i => i.request_id === req._id);
+            const enrichedItems = await Promise.all(
+              requestItems.map(async (i) => {
+                const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+                return {
+                  ...i,
+                  name: tool.name,
+                  unit: tool.unit,
+                  price: tool.price,
+                  img: tool.img || itemImage,
+                };
+              })
+            );
+
+            // groups
+            const { data: groupMembers } = await axios.get(`/api/groups/request/${req._id}`);
+
+            // join groups → users by `_id`
+            const enrichedGroups = groupMembers.map(gm => {
+              const user = allUsers.find(u => u._id === gm.user_id); // match NeDB _id
+              return { ...gm, user };
+            });
+
+            return { ...req, items: enrichedItems, groupMembers: enrichedGroups };
+          })
+        );
+
+        setHistoryRequests(enrichedRequests);
+      } catch (err) {
+        console.error("Failed to fetch transaction history:", err);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  const renderStatusTracker = () => {
+    if (!activeRequest) {
+      return (
+        <div style={{ ...cardStyle, padding: '30px 24px', backgroundColor: 'rgba(255,255,255,0.95)', textAlign: 'center' }}>
+          <p style={{ fontSize: '15px', color: '#666' }}>No active borrow request yet.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ ...cardStyle, padding: '30px 24px', backgroundColor: 'rgba(255,255,255,0.95)' }}>
+        <p style={{ fontSize: '17px', fontWeight: 600, margin: '0 0 2px 15px', lineHeight: 1.2 }}>
+          Current Status
+        </p>
+        <p style={{ fontSize: '15px', color: '#444', fontWeight: 400, margin: '0 0 20px 15px', lineHeight: 1.2 }}>
+          {remarks}
+        </p>
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '48px',
+              left: '8%',
+              right: '8%',
+              height: '2px',
+              backgroundColor: '#991F1F',
+              zIndex: 0,
+            }}
+          />
+          {steps.map((label, index) => {
+            const isCompleted = index < currentStep; // careful: status_id aligns 1-based
+            return (
+              <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, flex: 1 }}>
+                <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    filter: isActive ? 'brightness(0) invert(1)' : 'none',
+                    width: '85px',
+                    height: '85px',
+                    borderRadius: '50%',
+                    backgroundColor: isCompleted ? '#991F1F' : '#fff',
+                    border: '2px solid #991F1F',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '12px',
                   }}
-                />
+                >
+                  <img
+                    src={progressChecked}
+                    alt="Step"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      filter: isCompleted ? 'brightness(0) invert(1)' : 'none',
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '14.2px', textAlign: 'center', maxWidth: '124px', fontWeight: isCompleted ? 600 : 400, color: '#333', lineHeight: 1.2 }}>
+                  {label}
+                </div>
               </div>
-              <div style={{ fontSize: '14.2px', textAlign: 'center', maxWidth: '124px', fontWeight: isActive ? 600 : 400, color: '#333', lineHeight: 1.2 }}>
-                {label}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -146,65 +300,86 @@ function TransactionPage() {
 
           {/* On-going Borrowed Request */}
           <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ ...headingStyle, fontSize: '17px' }}>On-going Borrowed Request</div>
-                <div style={{ ...subTextStyle, marginBottom: '10px' }}>Request No. 0000001249</div>
+                <div style={{ ...headingStyle, fontSize: "17px" }}>On-going Borrowed Request</div>
+                <div style={{ ...subTextStyle, marginBottom: "10px" }}>
+                  {activeRequest ? `Request No. ${activeRequest.request_slip_id}` : "No active borrow request yet."}
+                </div>
               </div>
-              <button
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: currentStep === 0 ? '#b1b1b1ff' : buttonStyle.backgroundColor,
-                  cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
-                }}
-                disabled={currentStep === 0}
-                onMouseOver={(e) => {
-                  if (currentStep !== 0) e.currentTarget.style.backgroundColor = '#7f1a1a';
-                }}
-                onMouseOut={(e) => {
-                  if (currentStep !== 0) e.currentTarget.style.backgroundColor = '#991F1F';
-                }}
-              >
-                Export List Requisition
-              </button>
+                {activeRequest && (
+                  <button
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: activeRequest.status_id === 2 
+                        ? buttonStyle.backgroundColor 
+                        : "#b1b1b1ff",
+                      cursor: activeRequest.status_id === 2 ? "pointer" : "not-allowed",
+                    }}
+                    disabled={activeRequest.status_id !== 2}
+                    onClick={() => {
+                      if (activeRequest.status_id !== 2) return;
+
+                      const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
+                      const fileUrl = `${baseUrl}/pdf/borrow_slip_${activeRequest.request_slip_id}.pdf`;
+                      window.open(fileUrl, "_blank"); // opens in new tab (downloadable/viewable)
+                    }}
+                  >
+                    Export List Requisition
+                  </button>
+                )}
             </div>
 
-            <div style={{ border: '1px solid #991F1F', borderRadius: '8px', marginTop: '10px', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#991F1F', color: '#fff' }}>
-                    <th style={{ ...tableHeaderCell, borderTopLeftRadius: '8px' }}>Item</th>
-                    <th style={tableHeaderCell}>Description</th>
-                    <th style={{ ...tableHeaderCell, textAlign: 'center' }}>Quantity</th>
-                    <th style={tableHeaderCell}>Unit</th>
-                    <th style={tableHeaderCell}>Price</th>
-                    <th style={{ ...tableHeaderCell, borderTopRightRadius: '8px' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: 'Stone 27cm Granite Dinner Plate', qty: '12', unit: 'pcs', price: '₱ 1,200' },
-                    { name: 'Silver 14cm Tea Spoon', qty: '12', unit: 'pcs', price: '₱ 600' },
-                    { name: 'Crystal Wine Glass', qty: '6', unit: 'pcs', price: '₱ 900' },
-                  ].map((item, index) => (
-                    <tr key={index} style={{ backgroundColor: '#fff' }}>
-                      <td style={tableCell}>
-                        <img src={itemImage} alt="item" style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '5px' }} />
-                      </td>
-                      <td style={{ ...tableCell, color: '#333' }}>{item.name}</td>
-                      <td style={{ ...tableCell, textAlign: 'center' }}>{item.qty}</td>
-                      <td style={tableCell}>{item.unit}</td>
-                      <td style={tableCell}>{item.price}</td>
-                      <td style={tableCell}>
-                        <span style={{ fontSize: '13.5px', padding: '4px 10px', backgroundColor: '#E6F0FF', color: '#0053A6', borderRadius: '5px', fontWeight: 500, display: 'inline-block' }}>
-                          Requested
-                        </span>
-                      </td>
+            {activeRequest && (
+              <div style={{ border: "1px solid #991F1F", borderRadius: "8px", marginTop: "10px", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#991F1F", color: "#fff" }}>
+                      <th style={{ ...tableHeaderCell, borderTopLeftRadius: "8px" }}>Item</th>
+                      <th style={tableHeaderCell}>Description</th>
+                      <th style={{ ...tableHeaderCell, textAlign: "center" }}>Quantity</th>
+                      <th style={tableHeaderCell}>Unit</th>
+                      <th style={tableHeaderCell}>Price</th>
+                      <th style={{ ...tableHeaderCell, borderTopRightRadius: "8px" }}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                  {activeRequest && activeRequest.items && (
+                    activeRequest.items.map((item, index) => (
+                      <tr key={index} style={{ backgroundColor: "#fff" }}>
+                        <td style={tableCell}>
+                          <img
+                            src={item.img}
+                            alt="item"
+                            style={{ width: "44px", height: "44px", objectFit: "cover", borderRadius: "5px" }}
+                          />
+                        </td>
+                        <td style={{ ...tableCell, color: "#333" }}>{item.name}</td>
+                        <td style={{ ...tableCell, textAlign: "center" }}>{item.requested_qty}</td>
+                        <td style={tableCell}>{item.unit}</td>
+                        <td style={tableCell}>₱ {item.price}</td>
+                        <td style={tableCell}>
+                          <span
+                            style={{
+                              fontSize: "13.5px",
+                              padding: "4px 10px",
+                              backgroundColor: "#E6F0FF",
+                              color: "#0053A6",
+                              borderRadius: "5px",
+                              fontWeight: 500,
+                              display: "inline-block",
+                            }}
+                          >
+                            Requested
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Transaction History */}
@@ -214,62 +389,114 @@ function TransactionPage() {
               <div style={{ fontSize: '15px', color: '#777', margin: '-4px 0 12px' }}>Track completed equipment transactions</div>
             </div>
 
-            {[1, 2, 3, 4].map((num, index) => (
-              <div key={num} style={{ border: '0.5px solid #ccc', borderRadius: '10px', marginBottom: '12px', padding: '15px 16px', backgroundColor: 'rgba(255,255,255,0.8)' }}>
-                <div onClick={() => toggleExpand(index)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+            {historyRequests.map((req, index) => (
+              <div
+                key={req._id}
+                style={{
+                  border: "0.5px solid #ccc",
+                  borderRadius: "10px",
+                  marginBottom: "12px",
+                  padding: "15px 16px",
+                  backgroundColor: "rgba(255,255,255,0.8)",
+                }}
+              >
+                <div
+                  onClick={() => toggleExpand(index)}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                >
                   <div>
                     <strong>Completed Borrowed Request</strong>
-                    <div style={{ fontSize: '13px', color: '#777' }}>Request No. 00000012{num}</div>
+                    <div style={{ fontSize: "13px", color: "#777" }}>
+                      Request No. {req.request_slip_id}
+                    </div>
                   </div>
                   <FaChevronDown
                     style={{
-                      color: '#991F1F',
-                      transform: expandedIndex === index ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease',
+                      color: "#991F1F",
+                      transform: expandedIndex === index ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
                     }}
                   />
                 </div>
 
                 {expandedIndex === index && (
-                  <div style={{ marginTop: '16px', padding: '20px', backgroundColor: '#fafafa', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', fontSize: '14px', color: '#333', lineHeight: 1.6 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: '40px', rowGap: '10px', marginBottom: '18px' }}>
-                      <div style={{ flex: '1 1 45%' }}>
-                        <p><strong>Date Requested:</strong> July 10, 2025</p>
-                        <p><strong>Date Use:</strong> July 12, 2025</p>
-                        <p><strong>Time Use:</strong> 8:00 AM – 12:00 PM</p>
+                  <div
+                    style={{
+                      marginTop: "16px",
+                      padding: "20px",
+                      backgroundColor: "#fafafa",
+                      borderRadius: "8px",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                      fontSize: "14px",
+                      color: "#333",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px" }}>
+                      <div style={{ flex: "1 1 45%" }}>
+                        <p><strong>Date Requested:</strong> {req.date_requested}</p>
+                        <p><strong>Date Use:</strong> {req.lab_date}</p>
+                        <p><strong>Time Use:</strong> {req.lab_time}</p>
+                        <p><strong>Course:</strong> {req.course}</p>
                       </div>
-                      <div style={{ flex: '1 1 45%' }}>
-                        <p><strong>Course:</strong> BSIT-3A</p>
-                        <p><strong>Group Leader:</strong> Juan Dela Cruz</p>
-                        <p><strong>Group Members:</strong> Maria Santos, Ana Reyes, Pedro Tan</p>
+                      <div style={{ flex: "1 1 45%" }}>
+                        {req.groupMembers && req.groupMembers.length > 0 && (
+                          <div style={{ marginTop: "10px" }}>
+                            {(() => {
+                              const leader = req.groupMembers.find(gm => gm.is_leader);
+                              const members = req.groupMembers.filter(gm => !gm.is_leader);
+
+                              return (
+                                <>
+                                  {leader && (
+                                    <p>
+                                      <strong>Group Leader:</strong>{" "}
+                                      {leader.user?.name || "(unknown)"}
+                                    </p>
+                                  )}
+                                  {members.length > 0 && (
+                                    <div>
+                                      <p><strong>Group Members:</strong></p>
+                                      <ul style={{ marginLeft: "18px", fontSize: "13.5px" }}>
+                                        {members.map(m => (
+                                          <li key={m._id}>{m.user?.name || "(unknown)"}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div>
-                      <p style={{ fontWeight: 600, marginBottom: '10px' }}>Borrowed Items:</p>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#fff', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                        <thead style={{ backgroundColor: '#f2f2f2' }}>
+                      <p style={{ fontWeight: 600, marginBottom: "10px" }}>Borrowed Items:</p>
+                      <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#fff", borderRadius: "6px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                        <thead style={{ backgroundColor: "#f2f2f2" }}>
                           <tr>
-                            <th style={{ textAlign: 'left', padding: '10px', fontSize: '13.5px' }}>Item</th>
-                            <th style={{ textAlign: 'center', padding: '10px', fontSize: '13.5px' }}>Quantity</th>
-                            <th style={{ textAlign: 'left', padding: '10px', fontSize: '13.5px' }}>Unit</th>
-                            <th style={{ textAlign: 'left', padding: '10px', fontSize: '13.5px' }}>Status</th>
+                            <th style={{ textAlign: "left", padding: "10px", fontSize: "13.5px" }}>Item</th>
+                            <th style={{ textAlign: "center", padding: "10px", fontSize: "13.5px" }}>Quantity</th>
+                            <th style={{ textAlign: "left", padding: "10px", fontSize: "13.5px" }}>Unit</th>
+                            <th style={{ textAlign: "left", padding: "10px", fontSize: "13.5px" }}>Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {[
-                            { name: 'Stone 27cm Granite Dinner Plate', qty: '12', unit: 'pcs' },
-                            { name: 'Silver 14cm Tea Spoon', qty: '12', unit: 'pcs' },
-                            { name: 'Crystal Wine Glass', qty: '6', unit: 'pcs' },
-                          ].map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                              <td style={{ padding: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <img src={itemImage} alt="Item" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #ddd' }} />
+                          {req.items.map((item, idx) => (
+                            <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
+                              <td style={{ padding: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
+                                <img
+                                  src={item.img}
+                                  alt="Item"
+                                  style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "6px", border: "1px solid #ddd" }}
+                                />
                                 {item.name}
                               </td>
-                              <td style={{ textAlign: 'center', padding: '10px' }}>{item.qty}</td>
-                              <td style={{ padding: '10px' }}>{item.unit}</td>
-                              <td style={{ padding: '10px', color: '#267326', fontWeight: 500 }}>Returned</td>
+                              <td style={{ textAlign: "center", padding: "10px" }}>{item.requested_qty}</td>
+                              <td style={{ padding: "10px" }}>{item.unit}</td>
+                              <td style={{ padding: "10px", color: "#267326", fontWeight: 500 }}>Returned</td>
                             </tr>
                           ))}
                         </tbody>

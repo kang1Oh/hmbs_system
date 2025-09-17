@@ -4,6 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 
@@ -13,7 +14,7 @@ const host = '0.0.0.0'; // Enables access from other devices
 // --- CORS ---
 app.use(
   cors({
-    origin: 'http://localhost:5173', // or whatever your front URL is
+    origin: 'http://localhost:5173', // React dev server
     credentials: true,
   })
 );
@@ -42,6 +43,9 @@ app.use(
 app.get('/', (req, res) => {
   res.send('Hello from Express!');
 });
+
+// serve the pdf folder statically
+app.use("/pdf", express.static(path.join(__dirname, "pdf")));
 
 // Routes Mounting
 const roleRoutes = require('./routes/roles_routes');

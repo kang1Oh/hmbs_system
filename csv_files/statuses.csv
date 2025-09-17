@@ -2,4 +2,6 @@
 1,pending
 2,approved
 3,released
-4,returned
+4,reviewed
+5,returned
+6,denied

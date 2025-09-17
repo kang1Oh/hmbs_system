@@ -32,6 +32,15 @@ router.get('/:id', (req, res) => {
   });
 });
 
+// GET all requests for a specific user
+router.get('/user/:user_id', (req, res) => {
+  const userId = parseInt(req.params.user_id, 10); // since you’re storing numeric IDs
+  borrowRequests.find({ user_id: userId }, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(docs.map(formatRequest));
+  });
+});
+
 router.post('/', (req, res) => {
   borrowRequests.insert(req.body, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });

@@ -24,7 +24,7 @@ function readApprovalsFromCSV(filePath) {
         const approval_id = row['approval_id']?.trim();
         const request_id = row['request_id']?.trim();
         const user_id = row['user_id']?.trim();
-        const decision = row['decision']?.trim();
+        const status_id = row['status_id']?.trim();
         const remarks = row['remarks']?.trim() || '';
         const nedb_id = row['nedb_id']?.trim() || '';
 
@@ -33,7 +33,7 @@ function readApprovalsFromCSV(filePath) {
             approval_id,
             request_id,
             user_id,
-            decision,
+            status_id,
             remarks,
             _id: nedb_id || undefined, // keep nedb_id if exists
           };
@@ -58,7 +58,7 @@ async function exportApprovalsToCSV() {
       'approval_id',
       'request_id',
       'user_id',
-      'decision',
+      'status_id',
       'remarks',
       'nedb_id', // ✅ always last
     ];
@@ -69,7 +69,7 @@ async function exportApprovalsToCSV() {
         approval_id: a.approval_id,
         request_id: a.request_id,
         user_id: a.user_id,
-        decision: a.decision,
+        status_id: a.status_id,
         remarks: a.remarks,
         nedb_id: a._id || '',
       }))

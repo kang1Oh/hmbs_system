@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import hmbsLogo from '../assets/site-images/hmbs-logo-white.png';
 import handcartIcon from '../assets/handcart.png';
@@ -12,6 +12,9 @@ function Header() {
   const navigate = useNavigate();
   const { cart } = useCart();
   const totalItems = cart.reduce((sum, item) => sum + item.selectedQty, 0);
+  
+  // Fetch user from localStorage
+  const user = JSON.parse(localStorage.getItem('user'));
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const handleLogout = async () => {
@@ -122,6 +125,20 @@ function Header() {
     zIndex: 9999, 
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showLogoutDropdown) return;
+    const handleClickOutside = (event) => {
+      const dropdown = document.getElementById('logout-dropdown');
+      if (dropdown && !dropdown.contains(event.target)) {
+        setLogoutDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showLogoutDropdown]);
 
   return (
     <div style={wrapperStyle}>
@@ -159,20 +176,28 @@ function Header() {
               onClick={() => setLogoutDropdown(!showLogoutDropdown)}
             />
             {showLogoutDropdown && (
-              <div
-                style={LogoutBoxStyle}
-                onClick={(e) => {
-                setShowLogoutModal(true);
-                setLogoutDropdown(false);
-              }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f2f2f2';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#ffffff';
-                }}
-              >
-                Logout
+              <div id="logout-dropdown" style={LogoutBoxStyle}>
+                <p style={{ margin: '0 0 8px 0', pointerEvents: 'none' }}>Hello, <span style={{color: '#861111'}}>{user.name}</span>!</p>
+                <div
+                  style={{
+                    cursor: 'pointer',
+                    padding: '4px 0',
+                    borderRadius: '4px',
+                    backgroundColor: 'transparent',
+                  }}
+                  onClick={() => {
+                    setShowLogoutModal(true);
+                    setLogoutDropdown(false);
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = '#f2f2f2';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Logout
+                </div>
               </div>
             )}
           </div>
@@ -180,11 +205,11 @@ function Header() {
       </header>
       
       {showLogoutModal && (
-      <LogoutModal
-        onCancel={() => setShowLogoutModal(false)}
-        onConfirm={handleLogout}
-      />
-    )}
+        <LogoutModal
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      )}
 
     </div>
   );
