@@ -28,7 +28,7 @@ function readApprovalsFromCSV(filePath) {
         const remarks = row['remarks']?.trim() || '';
         const nedb_id = row['nedb_id']?.trim() || '';
 
-        if (approval_id && request_id && user_id && decision) {
+        if (approval_id && request_id && user_id && status_id) {
           const parsed = {
             approval_id,
             request_id,

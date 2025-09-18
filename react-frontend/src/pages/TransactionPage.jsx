@@ -79,86 +79,146 @@ function TransactionPage() {
     verticalAlign: 'middle',
   };
 
-  //request status fetch
+  // //request status fetch
+  // useEffect(() => {
+  //   const fetchRequest = async () => {
+  //     try {
+  //       const storedUser = JSON.parse(localStorage.getItem("user"));
+  //       if (!storedUser) return;
+
+  //       const res = await axios.get("/api/borrow-requests");
+  //       const userRequests = res.data.filter(r => r.user_id === storedUser.user_id);
+
+  //       // only refer to the latest request ID
+  //       if (userRequests.length > 0) {
+  //         const latestRequest = userRequests[userRequests.length - 1];
+  //         setActiveRequest(latestRequest);
+  //         setCurrentStep(latestRequest.status_id);
+
+  //         // decide remarks
+  //         if (latestRequest.status_id === 1) {
+  //           setRemarks("Borrowing request has been submitted for approval.");
+  //         } else if (latestRequest.status_id === 2 || latestRequest.status_id === 6) {
+  //           const approvalsRes = await axios.get("/api/approvals");
+  //           const approval = approvalsRes.data.find(a => a.request_id == latestRequest.request_slip_id);
+  //           setRemarks(approval ? approval.remarks : '');
+  //         } else if (latestRequest.status_id === 3) {
+  //           setRemarks("Your items have been released.");
+  //         } else if (latestRequest.status_id === 4) {
+  //           setRemarks("Your returned items are currently under review.");
+  //         } else if (latestRequest.status_id === 5) {
+  //           setRemarks("All items have been returned in good condition.");
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Error fetching borrow requests:", err);
+  //     }
+  //   };
+
+  //   fetchRequest();
+  // }, []);
+
+  // //active request fetch with items
+  // useEffect(() => {
+  //   const fetchActiveRequest = async () => {
+  //     const storedUser = JSON.parse(localStorage.getItem("user"));
+  //     if (!storedUser) return;
+
+  //     try {
+  //       // 1. get all requests for this user
+  //       const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+  //       const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
+  //       if (!active) {
+  //         setActiveRequest(null);
+  //         return;
+  //       }
+
+  //       // 2. get all borrow items for this request
+  //       const { data: allItems } = await axios.get(`/api/borrow-items`);
+  //       const requestItems = allItems.filter(i => i.request_id === active._id);
+
+  //       // 3. enrich with tool details
+  //       const enrichedItems = await Promise.all(
+  //         requestItems.map(async (i) => {
+  //           const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+  //           return {
+  //             ...i,
+  //             name: tool.name,
+  //             unit: tool.unit,
+  //             price: tool.price,
+  //             img: tool.img || itemImage,
+  //           };
+  //         })
+  //       );
+
+  //       setActiveRequest({ ...active, items: enrichedItems || [] });
+  //     } catch (err) {
+  //       console.error("Failed to fetch active request:", err);
+  //     }
+  //   };
+
+  //   fetchActiveRequest();
+  // }, []);
+
   useEffect(() => {
-    const fetchRequest = async () => {
-      try {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (!storedUser) return;
-
-        const res = await axios.get("/api/borrow-requests");
-        const userRequests = res.data.filter(r => r.user_id === storedUser.user_id);
-
-        // only refer to the latest request ID
-        if (userRequests.length > 0) {
-          const latestRequest = userRequests[userRequests.length - 1];
-          setActiveRequest(latestRequest);
-          setCurrentStep(latestRequest.status_id);
-
-          // decide remarks
-          if (latestRequest.status_id === 1) {
-            setRemarks("Borrowing request has been submitted for approval.");
-          } else if (latestRequest.status_id === 2 || latestRequest.status_id === 6) {
-            const approvalsRes = await axios.get("/api/approvals");
-            const approval = approvalsRes.data.find(a => a.request_id == latestRequest.request_slip_id);
-            setRemarks(approval ? approval.remarks : '');
-          } else if (latestRequest.status_id === 3) {
-            setRemarks("Your items have been released.");
-          } else if (latestRequest.status_id === 4) {
-            setRemarks("Your returned items are currently under review.");
-          } else if (latestRequest.status_id === 5) {
-            setRemarks("All items have been returned in good condition.");
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching borrow requests:", err);
-      }
-    };
-
-    fetchRequest();
-  }, []);
-
-  //active request fetch with items
-  useEffect(() => {
-    const fetchActiveRequest = async () => {
+  const fetchActiveRequest = async () => {
+    try {
       const storedUser = JSON.parse(localStorage.getItem("user"));
       if (!storedUser) return;
 
-      try {
-        // 1. get all requests for this user
-        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
-        const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
-        if (!active) {
-          setActiveRequest(null);
-          return;
-        }
+      // get all requests for this user
+      const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+      const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
 
-        // 2. get all borrow items for this request
-        const { data: allItems } = await axios.get(`/api/borrow-items`);
-        const requestItems = allItems.filter(i => i.request_id === active._id);
-
-        // 3. enrich with tool details
-        const enrichedItems = await Promise.all(
-          requestItems.map(async (i) => {
-            const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
-            return {
-              ...i,
-              name: tool.name,
-              unit: tool.unit,
-              price: tool.price,
-              img: tool.img || itemImage,
-            };
-          })
-        );
-
-        setActiveRequest({ ...active, items: enrichedItems || [] });
-      } catch (err) {
-        console.error("Failed to fetch active request:", err);
+      if (!active) {
+        setActiveRequest(null);
+        return;
       }
-    };
 
-    fetchActiveRequest();
-  }, []);
+      // set current step BEFORE enriching
+      setCurrentStep(Number(active.status_id));
+
+      // set remarks
+      if (active.status_id === 1) {
+        setRemarks("Borrowing request has been submitted for approval.");
+      } else if (active.status_id === 2 || active.status_id === 6) {
+        const { data: approvals } = await axios.get("/api/approvals");
+        const approval = approvals.find(a => a.request_id == active.request_slip_id);
+        setRemarks(approval ? approval.remarks : '');
+      } else if (active.status_id === 3) {
+        setRemarks("Your items have been released.");
+      } else if (active.status_id === 4) {
+        setRemarks("Your returned items are currently under review.");
+      } else if (active.status_id === 5) {
+        setRemarks("All items have been returned in good condition.");
+      }
+
+      // fetch items
+      const { data: allItems } = await axios.get(`/api/borrow-items`);
+      const requestItems = allItems.filter(i => i.request_id === active._id);
+
+      const enrichedItems = await Promise.all(
+        requestItems.map(async (i) => {
+          const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+          return {
+            ...i,
+            name: tool.name,
+            unit: tool.unit,
+            price: tool.price,
+            img: tool.img || itemImage,
+          };
+        })
+      );
+
+      setActiveRequest({ ...active, items: enrichedItems || [] });
+
+    } catch (err) {
+      console.error("Error fetching active request:", err);
+    }
+  };
+
+  fetchActiveRequest();
+}, []);
 
   //transaction history fetch
   useEffect(() => {
