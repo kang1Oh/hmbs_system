@@ -1,7 +1,7 @@
 import React from 'react';
 import tempItemImg from '../assets/images/temp-item-img.png';
 
-function ItemCard({ name, qty, onClick }) {
+function ItemCard({ name, qty, onClick }) { //add image prop when available
   const cardStyle = {
     backgroundColor: '#991F1F',
     color: '#fff',
@@ -37,11 +37,12 @@ function ItemCard({ name, qty, onClick }) {
 
   return (
     <div style={cardStyle} onClick={onClick}>
-      <img src={tempItemImg} alt={name} style={cardImageStyle} />
+      {/* Replace with actual image source when available ( <img src={image} alt={name} style={cardImageStyle} />) */}
+      <img src={tempItemImg} alt={name} style={cardImageStyle} /> 
       <p style={cardTitleStyle}>{name}</p>
       <div style={qtyRowStyle}>
-        <span>Qty Available</span>
-        <span>{qty}</span>
+        <span>{qty} Available</span>
+        <span></span>
       </div>
     </div>
   );

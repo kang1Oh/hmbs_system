@@ -150,13 +150,44 @@ function Header() {
         <div style={navContainerStyle}>
           <nav>
             <ul style={navStyle}>
-              <Link to="/equipment" style={linkStyle}>Home</Link>
-              <Link to="/about" style={linkStyle}>About</Link>
-              <Link to="/transaction" style={linkStyle}>Transaction</Link>
+              <li>
+                <Link
+                  to="/equipment"
+                  style={{
+                    ...linkStyle,
+                    color: window.location.pathname === '/equipment' ? '#f6c235' : 'white'
+                  }}
+                >
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/about"
+                  style={{
+                    ...linkStyle,
+                    color: window.location.pathname === '/about' ? '#f6c235' : 'white'
+                  }}
+                >
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/transaction"
+                  style={{
+                    ...linkStyle,
+                    color: window.location.pathname === '/transaction' ? '#f6c235' : 'white'
+                  }}
+                >
+                  Transaction
+                </Link>
+              </li>
             </ul>
           </nav>
         </div>
 
+        
         {/* Right: Icons */}
         <div style={rightIconsStyle}>
           {/* Cart Icon with Badge */}

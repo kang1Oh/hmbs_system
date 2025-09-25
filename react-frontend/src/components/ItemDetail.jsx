@@ -3,7 +3,7 @@ import tempItemImg from '../assets/images/temp-item-img.png';
 import ItemAddedModal from './ItemAddedModal'; 
 import { useCart } from '../context/CartContext';
 
-function ItemDetail({ item, onClose }) {
+function ItemDetail({ item, onClose }) { // add image and price props when available
   if (!item) return null;
 
   const { addToCart } = useCart();
@@ -132,12 +132,13 @@ function ItemDetail({ item, onClose }) {
         <div style={modalContent} onClick={e => e.stopPropagation()}>
           <button onClick={onClose} style={closeButton}>×</button>
 
+          {/* Replace with actual image source when available */}
           <img src={tempItemImg} alt={item.name} style={imageStyle} />
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <h2 style={{ fontWeight: 600, fontSize: '30px', marginBottom: '5px', lineHeight: '1.2', textAlign: 'left' }}>{item.name}</h2>
             <p style={{ fontSize: '16px', color: '#555', marginBottom: '12px' }}>Available Qty: {item.available_qty}</p>
-            <p style={{ color: '#991F1F', fontWeight: 600, fontSize: '25px', marginBottom: '20px' }}>$100.00</p>
+            <p style={{ color: '#991F1F', fontWeight: 600, fontSize: '25px', marginBottom: '20px' }}>₱{item.price}</p>
 
             <div style={qtyControlsContainer}>
               <label style={qtyLabel}>Quantity</label>

@@ -181,10 +181,11 @@ function BorrowRequestForm() {
 
   const [groupMembers, setGroupMembers] = useState([{ _id: null, name: "" }]);
   const [groupLeader, setGroupLeader] = useState({ _id: null, name: "" });
-  const [dateRequested, setDateRequested] = useState("");
-  const [dateUse, setDateUse] = useState("");
-  const [timeUse, setTimeUse] = useState("");
   const today = new Date().toISOString().split("T")[0];
+  const [dateRequested, setDateRequested] = useState(today);
+  const [dateUse, setDateUse] = useState("");
+  const [weekendError, setWeekendError] = useState("");
+  const [timeUse, setTimeUse] = useState("");
   const [course, setCourse] = useState("");
 
   const [isFormValid, setIsFormValid] = useState(false);
@@ -304,9 +305,10 @@ function BorrowRequestForm() {
               <input
                 type="date"
                 style={styles.input}
-                value={dateRequested}
-                min={today}
+                value={today}
                 onChange={(e) => setDateRequested(e.target.value)}
+                readOnly
+                disabled
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -322,8 +324,31 @@ function BorrowRequestForm() {
                         .split("T")[0]
                     : today
                 }
-                onChange={(e) => setDateUse(e.target.value)}
+                onChange={(e) => {
+                  const selectedDate = e.target.value;
+                  const day = new Date(selectedDate).getDay();
+                  setWeekendError("");
+                  // 0 = Sunday, 6 = Saturday
+                  if (day === 0 || day === 6) {
+                    // Prevent selecting weekends
+                    setDateUse("");
+                    setWeekendError("Weekends are not allowed. Please select a weekday.");
+                    return;
+                  }
+                  setDateUse(selectedDate);
+                }}
+                // Prevent manual entry of weekends
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const selectedDate = e.target.value;
+                    const day = new Date(selectedDate).getDay();
+                    if (day === 0 || day === 6) {
+                      e.preventDefault();
+                    }
+                  }
+                }}
               />
+              {weekendError && <p style={{ color: "red", fontSize: "13px" }}>{weekendError}</p>}
             </div>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>{required("Time Use")}</label>

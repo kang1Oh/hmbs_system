@@ -185,7 +185,8 @@ function EquipmentsPage() {
                 <ItemCard
                   key={item._id}
                   name={<span style={styles.cardName} title={item.name}>{item.name}</span>}
-                  onClick={() => setSelectedItem({ ...item, image: item.img || tempItemImg, price: item.price || 100 })}
+                  qty={item.available_qty}
+                  onClick={() => setSelectedItem({ ...item, image: item.img || tempItemImg, price: item.price})}
                 />
               ))}
             </div>
