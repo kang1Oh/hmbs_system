@@ -5,6 +5,41 @@ const { Parser } = require('json2csv');
 const router = express.Router();
 const { tools } = require('../models/db');
 
+// 📤 EXPORT current DB to CSV into /csv_exports folder
+router.get('/export', (req, res) => {
+  tools.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    const fields = [
+      'tool_id',
+      'category_id',
+      'name',
+      'location',
+      'available_qty',
+      'unit',
+      'price',
+      'img',
+      'tool_status',
+      'disposal_status',
+      '_id'
+    ];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(docs);
+
+    // write to /csv_exports/tools.csv instead of seeder folder
+    const csvPath = path.join(__dirname, '..', 'csv_exports', 'tools.csv');
+    try {
+      fs.writeFileSync(csvPath, csv);
+    } catch (e) {
+      console.error('⚠️ Failed to write export CSV:', e.message);
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('tools.csv');
+    res.send(csv);
+  });
+});
+
 // ✅ GET all tools
 router.get('/', (req, res) => {
   tools.find({}, (err, docs) => {
@@ -81,37 +116,5 @@ router.delete('/:id', (req, res) => {
   });
 });
 
-// 📤 EXPORT current DB to CSV and overwrite seeder CSV file
-router.get('/export', (req, res) => {
-  tools.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-
-    const fields = [
-      'tool_id',
-      'category_id',
-      'name',
-      'available_qty',
-      'unit',
-      'price',
-      'img',
-      'quantity',
-      'disposal_status',
-      '_id'
-    ];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
-
-    const csvPath = path.join(__dirname, '..', 'csv_files', 'tools.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      console.error('⚠️ Failed to write seed CSV:', e.message);
-    }
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('tools.csv');
-    res.send(csv);
-  });
-});
 
 module.exports = router;

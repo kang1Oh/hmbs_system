@@ -20,24 +20,26 @@ function readToolsFromCSV(filePath) {
         const tool_id = row.tool_id?.trim();
         const category_id = row.category_id?.trim();
         const name = row.name?.trim();
+        const location = row.location?.trim() || '';
         const available_qty = row.available_qty?.trim();
         const unit = row.unit?.trim();
         const price = row.price?.trim();
         const img = row.img?.trim() || '';
-        const quantity = row.quantity?.trim();
+        const tool_status = row.tool_status?.trim() || 'available';
         const disposal_status = row.disposal_status?.trim();
         const _id = row._id?.trim() || undefined;
 
-        if (tool_id && category_id && name && available_qty && unit && quantity) {
+        if (tool_id && category_id && name && location && available_qty && unit && price && tool_status && disposal_status) {
           const parsedTool = {
             tool_id: Number(tool_id),
             category_id: Number(category_id),
             name,
+            location,
             available_qty: parseInt(available_qty),
             unit,
             price: price ? parseFloat(price) : null,
             img,
-            quantity: parseInt(quantity),
+            tool_status,
             disposal_status,
           };
 
@@ -91,11 +93,12 @@ async function exportToolsToCSV() {
       'tool_id',
       'category_id',
       'name',
+      'location',
       'available_qty',
       'unit',
       'price',
       'img',
-      'quantity',
+      'tool_status',
       'disposal_status',
       '_id', // append NeDB-generated ID at the end
     ];

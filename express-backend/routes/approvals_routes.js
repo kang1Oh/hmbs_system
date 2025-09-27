@@ -3,6 +3,37 @@ const express = require('express');
 const router = express.Router();
 const { approvals } = require('../models/db');
 
+// 📤 EXPORT approvals DB to CSV into /csv_exports
+router.get('/export', (req, res) => {
+  approvals.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    const fields = [
+      'request_id',
+      'user_id',
+      'name',
+      'role_id',
+      'status_id',
+      'remarks',
+      'date_approved',
+      'nedb_id'
+    ];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(docs);
+
+    const csvPath = path.join(__dirname, '..', 'csv_exports', 'approvals.csv');
+    try {
+      fs.writeFileSync(csvPath, csv);
+    } catch (e) {
+      console.error('⚠️ Failed to write export CSV:', e.message);
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('approvals.csv');
+    res.send(csv);
+  });
+});
+
 router.get('/', (req, res) => {
   approvals.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });

@@ -21,20 +21,24 @@ function readApprovalsFromCSV(filePath) {
       .on('data', (row) => {
         console.log('🧾 Raw Row:', row);
 
-        const approval_id = row['approval_id']?.trim();
         const request_id = row['request_id']?.trim();
         const user_id = row['user_id']?.trim();
+        const name = row['name']?.trim(); 
+        const role_id = row['role_id']?.trim(); 
         const status_id = row['status_id']?.trim();
         const remarks = row['remarks']?.trim() || '';
+        const date_approved = row['date_approved']?.trim() || '';
         const nedb_id = row['nedb_id']?.trim() || '';
 
-        if (approval_id && request_id && user_id && status_id) {
+        if (request_id && user_id && status_id) {
           const parsed = {
-            approval_id,
             request_id,
             user_id,
+            name,
+            role_id,
             status_id,
             remarks,
+            date_approved,
             _id: nedb_id || undefined, // keep nedb_id if exists
           };
           console.log('✅ Parsed Approval:', parsed);
@@ -55,22 +59,26 @@ async function exportApprovalsToCSV() {
     const approvals = response.data;
 
     const fields = [
-      'approval_id',
       'request_id',
       'user_id',
+      'name',
+      'role_id',
       'status_id',
       'remarks',
+      'date_approved',
       'nedb_id', // ✅ always last
     ];
 
     const parser = new Parser({ fields });
     const csv = parser.parse(
       approvals.map((a) => ({
-        approval_id: a.approval_id,
         request_id: a.request_id,
         user_id: a.user_id,
+        name: a.name,
+        role_id: a.role_id,
         status_id: a.status_id,
         remarks: a.remarks,
+        date_approved: a.date_approved,
         nedb_id: a._id || '',
       }))
     );

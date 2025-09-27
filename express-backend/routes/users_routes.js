@@ -5,6 +5,38 @@ const path = require('path');
 const { Parser } = require('json2csv');
 const { users } = require('../models/db');
 
+// 📤 EXPORT current DB to CSV into /csv_exports
+router.get('/export', requireAuth, (req, res) => {
+  users.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    // match seeder columns
+    const fields = [
+      'user_id',
+      'role_id',
+      'email',
+      'password',
+      'name',
+      'active',
+      'createdAt',
+      '_id'
+    ];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(docs);
+
+    const csvPath = path.join(__dirname, '..', 'csv_exports', 'users.csv');
+    try {
+      fs.writeFileSync(csvPath, csv);
+    } catch (e) {
+      console.error('⚠️ Failed to write export CSV:', e.message);
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('users.csv');
+    res.send(csv);
+  });
+});
+
 // auth helper
 function requireAuth(req, res, next) {
   if (!req.session || !req.session.user) {
@@ -160,26 +192,4 @@ router.delete('/:id', (req, res) => {
   });
 });
 
-// EXPORT current DB to CSV and overwrite seeder CSV file
-router.get('/export', requireAuth, (req, res) => {
-  users.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-
-    const fields = ['user_id', 'role_id', 'email', 'password', 'name', '_id'];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
-
-    const csvPath = path.join(__dirname, '..', 'csv_files', 'users.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      // continue and still offer download
-      console.error('Failed to write seed CSV:', e.message);
-    }
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('users.csv');
-    res.send(csv);
-  });
-});
 module.exports = router;

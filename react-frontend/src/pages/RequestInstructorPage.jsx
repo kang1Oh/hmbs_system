@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { FaUserCircle, FaFileAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { FiLogOut } from 'react-icons/fi';
+import {FaFileAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Sidebar from '../components/Sidebar';
 import { useNavigate } from 'react-router-dom';
 

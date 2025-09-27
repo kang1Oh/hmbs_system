@@ -17,6 +17,36 @@ function formatRequest(doc) {
   };
 }
 
+// 📤 EXPORT current DB to CSV into /csv_exports
+router.get('/export', (req, res) => {
+  borrowRequests.find({}, (err, docs) => {
+    if (err) return res.status(500).json({ error: err });
+
+    const fields = [
+      'request_slip_id',
+      'course',
+      'date_requested',
+      'lab_date',
+      'lab_time',
+      'status',
+      '_id'
+    ];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(docs);
+
+    const csvPath = path.join(__dirname, '..', 'csv_exports', 'borrow_requests.csv');
+    try {
+      fs.writeFileSync(csvPath, csv);
+    } catch (e) {
+      console.error('⚠️ Failed to write export CSV:', e.message);
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('borrow_requests.csv');
+    res.send(csv);
+  });
+});
+
 router.get('/', (req, res) => {
   borrowRequests.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
@@ -134,36 +164,6 @@ router.post('/:id/generate-pdf', async (req, res) => {
     console.error("❌ PDF generation failed:", err);
     res.status(500).json({ error: err.message });
   }
-});
-
-// 📤 EXPORT current DB to CSV and overwrite seeder CSV file
-router.get('/export', (req, res) => {
-  borrowRequests.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-
-    const fields = [
-      'request_slip_id',
-      'course',
-      'date_requested',
-      'lab_date',
-      'lab_time',
-      'status',
-      '_id'
-    ];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
-
-    const csvPath = path.join(__dirname, '..', 'csv_files', 'borrow_requests.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      console.error('⚠️ Failed to write seed CSV:', e.message);
-    }
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('borrow_requests.csv');
-    res.send(csv);
-  });
 });
 
 module.exports = router;

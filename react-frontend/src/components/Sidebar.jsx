@@ -130,7 +130,11 @@ const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin
             <div style={styles.userInfo}>
               <FaUserCircle size={30} />
               <div>
-                <strong>{userRole}</strong>
+                <strong>
+                  {localStorage.getItem('user') 
+                    ? JSON.parse(localStorage.getItem('user')).name 
+                    : 'User'}
+                </strong>
                 <div style={{ fontSize: '0.85rem' }}>{userSubrole}</div>
               </div>
             </div>
