@@ -186,6 +186,7 @@ function EquipmentsPage() {
                   key={item._id}
                   name={<span style={styles.cardName} title={item.name}>{item.name}</span>}
                   qty={item.available_qty}
+                  img={item.img}
                   onClick={() => setSelectedItem({ ...item, image: item.img || tempItemImg, price: item.price})}
                 />
               ))}

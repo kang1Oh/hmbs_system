@@ -67,211 +67,33 @@ const CRUDInventoryPage = () => {
   // Sorting
   if (sortBy === 'Name (A-Z)') filteredData.sort((a, b) => a.name.localeCompare(b.name));
   else if (sortBy === 'Name (Z-A)') filteredData.sort((a, b) => b.name.localeCompare(a.name));
+  else filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const getPaginated = (page) => filteredData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   
   const styles = {
-    layout: {
-      display: 'flex',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    main: {
-      marginLeft: '240px',
-      padding: '2rem',
-      flex: 1,
-      backgroundColor: '#fff',
-      minHeight: '100vh',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    headerSection: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '1.5rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    searchSortWrapper: {
-      display: 'flex',
-      gap: '1rem',
-      marginBottom: '1rem',
-      position: 'relative',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    searchInput: {
-      flex: 1,
-      padding: '0.6rem 1rem',
-      border: '1.5px solid #991F1F',
-      borderRadius: '8px',
-      fontSize: '15px',
-      height: '45px',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    exportButton: {
-      padding: '7px 25px',
-      background: '#991F1F',
-      color: 'white',
-      border: '1px solid #991f1f',
-      borderRadius: '999px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      display: 'flex',
-      fontSize: '14px',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    addButton: {
-      backgroundColor: '#991F1F',
-      color: 'white',
-      border: 'none',
-      padding: '0.6rem 1.2rem',
-      borderRadius: '20px',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'separate',
-      borderSpacing: 0,
-      borderLeft: '1px solid #991F1F',
-      borderRight: '1px solid #991F1F',
-      borderBottom: '1px solid #991F1F',
-      borderRadius: '10px',
-      overflow: 'hidden',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    th: {
-      backgroundColor: '#991f1f',
-      color: 'white',
-      padding: '0.90rem',
-      textAlign: 'center',
-      fontSize: '15px',
-      fontFamily: 'Poppins, sans-serif',
-      fontWeight: '600',
-    },
-    td: {
-      padding: '0.70rem',
-      borderBottom: '1px solid #ccc',
-      backgroundColor: '#fff',
-      fontFamily: 'Poppins, sans-serif',
-      textAlign: 'center',
-    },
-    statusAvailable: {
-      backgroundColor: '#2d9cdb',
-      color: 'white',
-      padding: '0.4rem 0.8rem',
-      borderRadius: '99px',
-      fontSize: '0.8rem',
-      textAlign: 'center',
-      fontWeight: '500',
-      display: 'inline-block',
-      width: '100px',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    statusUnavailable: {
-      backgroundColor: '#DC2626',
-      color: 'white',
-      padding: '0.4rem 0.8rem',
-      borderRadius: '99px',
-      fontSize: '0.8rem',
-      textAlign: 'center',
-      fontWeight: '500',
-      display: 'inline-block',
-      width: '100px',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    actionIcons: {
-      display: 'flex',
-      gap: '0.7rem',
-      fontSize: '1rem',
-      cursor: 'pointer',
-      fontFamily: 'Poppins, sans-serif',
-      justifyContent: 'center', // horizontal centering
-      alignItems: 'center',     // vert
-    },
-    roundedCard: {
-      border: '1px solid #991F1F',
-      borderRadius: '12px',
-      padding: '1rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    pagination: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '0.5rem',
-      marginTop: '0.2rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    pageButton: (active) => ({
-      width: '35px',
-      height: '35px',
-      borderRadius: '50%',
-      border: '1px solid #991F1F',
-      backgroundColor: active ? '#991F1F' : '#fff',
-      color: active ? '#fff' : '#991F1F',
-      fontWeight: 500,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      cursor: 'pointer',
-      fontFamily: 'Poppins, sans-serif',
-    }),
-    navIconButton: (disabled) => ({
-      width: '35px',
-      height: '35px',
-      borderRadius: '50%',
-      border: '1px solid #991F1F',
-      backgroundColor: '#991F1F',
-      color: '#fff',
-      fontWeight: 500,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      opacity: disabled ? 0.5 : 1,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: 'Poppins, sans-serif',
-    }),
-    selectWrapper: {
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center',
-      width: '160px',
-      height: '45px',
-      borderRadius: '8px',
-      border: '1px solid #991F1F',
-      paddingRight: '1.5rem',
-      backgroundColor: '#fff',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    selectInput: {
-      fontSize: '14px',
-      width: '100%',
-      height: '100%',
-      padding: '0.5rem 0.8rem',
-      border: 'none',
-      outline: 'none',
-      background: 'transparent',
-      color: '#991f1f',
-      cursor: 'pointer',
-      appearance: 'none',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    selectChevron: {
-      position: 'absolute',
-      right: '0.9rem',
-      color: '#991f1f',
-      pointerEvents: 'none',
-    },
-    paginationInfo: {
-      textAlign: 'center',
-      marginBottom: '1.2rem',
-      marginTop: '0.7rem',
-      fontSize: '15px',
-      color: '#555',
-      fontFamily: 'Poppins, sans-serif',
-    },
+    layout: { display: 'flex', fontFamily: 'Poppins, sans-serif' },
+    main: { marginLeft: '240px', padding: '2rem', flex: 1, backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'Poppins, sans-serif' },
+    headerSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', fontFamily: 'Poppins, sans-serif' },
+    searchSortWrapper: { display: 'flex', gap: '1rem', marginBottom: '1rem', position: 'relative', fontFamily: 'Poppins, sans-serif' },
+    searchInput: { flex: 1, padding: '0.6rem 1rem', border: '1.5px solid #991F1F', borderRadius: '8px', fontSize: '15px', height: '45px', fontFamily: 'Poppins, sans-serif' },
+    exportButton: { padding: '7px 25px', background: '#15814dff', color: 'white', border: '1px solid #15814dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
+    addButton: { backgroundColor: '#991F1F', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Poppins, sans-serif' },
+    table: { width: '100%', borderCollapse: 'separate', borderSpacing: 0, borderLeft: '1px solid #991F1F', borderRight: '1px solid #991F1F', borderBottom: '1px solid #991F1F', borderRadius: '10px', overflow: 'hidden', fontFamily: 'Poppins, sans-serif' },
+    th: { backgroundColor: '#991f1f', color: 'white', padding: '0.90rem', textAlign: 'center', fontSize: '15px', fontFamily: 'Poppins, sans-serif', fontWeight: '600' },
+    td: { padding: '0.70rem', borderBottom: '1px solid #ccc', backgroundColor: '#fff', fontFamily: 'Poppins, sans-serif', textAlign: 'center' },
+    statusAvailable: { backgroundColor: '#2d9cdb', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '99px', fontSize: '0.8rem', textAlign: 'center', fontWeight: '500', display: 'inline-block', width: '100px', fontFamily: 'Poppins, sans-serif' },
+    statusUnavailable: { backgroundColor: '#DC2626', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '99px', fontSize: '0.8rem', textAlign: 'center', fontWeight: '500', display: 'inline-block', width: '100px', fontFamily: 'Poppins, sans-serif' },
+    actionIcons: { display: 'flex', gap: '0.7rem', fontSize: '1rem', cursor: 'pointer', fontFamily: 'Poppins, sans-serif', justifyContent: 'center', alignItems: 'center' },
+    roundedCard: { border: '1px solid #991F1F', borderRadius: '12px', padding: '1rem', fontFamily: 'Poppins, sans-serif' },
+    pagination: { display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '0.2rem', fontFamily: 'Poppins, sans-serif' },
+    pageButton: (active) => ({ width: '35px', height: '35px', borderRadius: '50%', border: '1px solid #991F1F', backgroundColor: active ? '#991F1F' : '#fff', color: active ? '#fff' : '#991F1F', fontWeight: 500, display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }),
+    navIconButton: (disabled) => ({ width: '35px', height: '35px', borderRadius: '50%', border: '1px solid #991F1F', backgroundColor: '#991F1F', color: '#fff', fontWeight: 500, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Poppins, sans-serif' }),
+    selectWrapper: { position: 'relative', display: 'flex', alignItems: 'center', width: '160px', height: '45px', borderRadius: '8px', border: '1px solid #991F1F', paddingRight: '1.5rem', backgroundColor: '#fff', fontFamily: 'Poppins, sans-serif' },
+    selectInput: { fontSize: '14px', width: '100%', height: '100%', padding: '0.5rem 0.8rem', border: 'none', outline: 'none', background: 'transparent', color: '#991f1f', cursor: 'pointer', appearance: 'none', fontFamily: 'Poppins, sans-serif' },
+    selectChevron: { position: 'absolute', right: '0.9rem', color: '#991f1f', pointerEvents: 'none' },
+    paginationInfo: { textAlign: 'center', marginBottom: '1.2rem', marginTop: '0.7rem', fontSize: '15px', color: '#555', fontFamily: 'Poppins, sans-serif' },
   };
 
   const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
@@ -317,7 +139,12 @@ const CRUDInventoryPage = () => {
               View all tools available for borrowing
             </p>
           </div>
-          <button style={styles.exportButton} onClick={handleExport}>Export CSV</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button style={styles.exportButton} onClick={handleExport}>Export CSV</button>
+            <button style={styles.addButton} onClick={() => navigate('/add-to-inventory')}>
+              <FiPlus /> Add New Item
+            </button>
+          </div>
         </div>
 
         <div style={styles.searchSortWrapper}>
@@ -334,7 +161,7 @@ const CRUDInventoryPage = () => {
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
             >
-              <option>Recommended</option>
+              <option>Newest</option>
               <option>Name (A-Z)</option>
               <option>Name (Z-A)</option>
             </select>
@@ -345,9 +172,6 @@ const CRUDInventoryPage = () => {
         <div style={styles.roundedCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '22px', fontWeight: '600', alignItems: 'center' }}>
             <p>List of Inventory Items</p>
-            <button style={styles.addButton} onClick={() => navigate('/add-to-inventory')}>
-              <FiPlus /> Add New Item
-            </button>
           </div>
 
           {loading ? (
@@ -374,7 +198,7 @@ const CRUDInventoryPage = () => {
                     <td style={styles.td}>{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                     <td style={styles.td}>
                       <img
-                        src={item.img || SpoonImage}
+                        src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || (item.img ? `http://localhost:5000${item.img}` : SpoonImage)}
                         alt="Item"
                         style={{ width: '40px', height: '40px', objectFit: 'cover' }}
                       />
@@ -401,7 +225,15 @@ const CRUDInventoryPage = () => {
                             setShowEditModal(true);
                           }}
                         />
-                        <Trash2 size={16} title="Delete Item" style={{ color: '#000' }} onClick={() => setShowDeleteModal(true)} />
+                        <Trash2
+                          size={16}
+                          title="Delete Item"
+                          style={{ color: '#000', cursor: 'pointer' }}
+                          onClick={() => {
+                            setSelectedTool(item);
+                            setShowDeleteModal(true);
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -448,7 +280,23 @@ const CRUDInventoryPage = () => {
             onSave={() => { fetchTools(); setShowEditModal(false); }}
           />
         )}
-        {showDeleteModal && <InventoryDeletionModal onCancel={() => setShowDeleteModal(false)} onDelete={() => { setShowDeleteModal(false); setShowItemDeletedModal(true); }} />}
+        {showDeleteModal && (
+          <InventoryDeletionModal
+            tool={selectedTool}
+            onCancel={() => setShowDeleteModal(false)}
+            onDelete={async () => {
+              try {
+                await axios.delete(`/api/tools/${selectedTool._id}`);
+                setShowDeleteModal(false);
+                setShowItemDeletedModal(true);
+
+                fetchTools();
+              } catch (err) {
+                console.error("Failed to delete tool:", err);
+              }
+            }}
+          />
+        )}
         {showItemDeletedModal && <InventoryItemDeletedModal onDone={() => setShowItemDeletedModal(false)} />}
       </main>
     </div>

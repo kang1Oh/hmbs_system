@@ -13,6 +13,7 @@
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
+    "multer": "^2.0.2",
     "nedb": "^1.8.0",
     "nedm": "^0.0.1",
     "pdfkit": "^0.17.2"

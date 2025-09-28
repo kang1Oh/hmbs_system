@@ -52,17 +52,24 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
     setStatusError("");
 
     try {
-      await axios.put(`/api/tools/${tool._id}`, {
-        name,
-        category_id: Number(category),
-        location,
-        available_qty: quantity,
-        unit,
-        price: Number(price),
-        tool_status: status,
-        disposal_status: disposalTag,
-        // img: leave for now
+      const formDataObj = new FormData();
+      formDataObj.append("name", name);
+      formDataObj.append("category_id", Number(category));
+      formDataObj.append("location", location);
+      formDataObj.append("available_qty", quantity);
+      formDataObj.append("unit", unit);
+      formDataObj.append("price", Number(price));
+      formDataObj.append("tool_status", status);
+      formDataObj.append("disposal_status", disposalTag);
+
+      if (imageFile) {
+        formDataObj.append("image", imageFile); // must match multer field
+      }
+
+      await axios.put(`/api/tools/${tool._id}`, formDataObj, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
+
       onSave?.();
       onClose?.();
     } catch (err) {
@@ -70,39 +77,91 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
     }
   };
 
+
   const handleFileChange = (e) => setImageFile(e.target.files[0]);
   const handleDone = () => {
     setShowUpdatedModal(false);
     onClose();
   };
 
-  const UploadBox = () => (
-    <div style={styles.formGroup}>
-      <label style={styles.label}>
-        Upload Image <span style={{ color: "red" }}>*</span>
-      </label>
-      <div style={styles.uploadBox}>
-        <img src={uploadFileIcon} alt="Upload Icon" style={styles.uploadIcon} />
-        <p style={styles.uploadText}>Choose a file or drag & drop it here</p>
-        <p style={styles.uploadInfo}>PDF, JPG, JPEG, PNG, DOC, DOCX formats, up to 10MB</p>
-        <label
-          htmlFor="file-upload"
-          style={{ ...styles.uploadBtn, ...(isBrowseHover && styles.uploadBtnHover) }}
-          onMouseEnter={() => setIsBrowseHover(true)}
-          onMouseLeave={() => setIsBrowseHover(false)}
-        >
-          Browse File
-        </label>
-        <input
-          id="file-upload"
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          onChange={handleFileChange}
-          style={{ display: "none" }}
-        />
+  const UploadBox = () => {
+    // Decide what to show in the box
+    const previewSrc = imageFile
+      ? URL.createObjectURL(imageFile) // new upload preview
+      : tool?.img
+      ? `${import.meta.env.VITE_API_BASE_URL}${tool.img}` // existing image
+      : null;
+
+    return (
+      <div style={styles.formGroup}>
+        <label style={styles.label}>Upload Image</label>
+        <div style={styles.uploadBox}>
+          {!previewSrc ? (
+            <>
+              <img src={uploadFileIcon} alt="Upload Icon" style={styles.uploadIcon} />
+              <p style={styles.uploadText}>Choose a file or drag & drop it here</p>
+              <p style={styles.uploadInfo}>JPG, JPEG, PNG formats up to 10MB</p>
+            </>
+          ) : (
+            <div style={{ textAlign: "center" }}>
+              {imageFile && (
+                <button
+                  type="button"
+                  onClick={() => setImageFile(null)}
+                  style={{
+                    position: "absolute",
+                    top: "20px",
+                    right: "20px",
+                    background: "#991F1F",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    cursor: "pointer",
+                  }}
+                >
+                  X
+                </button>
+              )}
+              <img
+                src={previewSrc}
+                alt="Preview"
+                style={{
+                  maxWidth: "120px",
+                  maxHeight: "120px",
+                  marginBottom: "8px",
+                  borderRadius: "8px",
+                  objectFit: "cover",
+                  border: "1px solid #000000ff",
+                }}
+              />
+              <p style={{ fontSize: "0.9rem", fontWeight: "bold", marginBottom: "1rem" }}>
+                {imageFile ? imageFile.name : "Current Image"}
+              </p>
+            </div>
+          )}
+
+          <input
+            id="file-upload"
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+          <label
+            htmlFor="file-upload"
+            style={{ ...styles.uploadBtn, ...(isBrowseHover && styles.uploadBtnHover) }}
+            onMouseEnter={() => setIsBrowseHover(true)}
+            onMouseLeave={() => setIsBrowseHover(false)}
+          >
+            Browse File
+          </label>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
 
   return (
     <>
@@ -118,6 +177,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
             <p style={styles.subtitle}>Edit item details below</p>
             <hr style={styles.divider} />
 
+            {/* Item Name */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Item Name</label>
               <input
@@ -135,6 +195,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
               />
             </div>
 
+            {/* Category */}
             <div style={styles.row}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Category</label>
@@ -178,6 +239,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
               </div>
             </div>
 
+            {/* Available Quantity & Unit */}
             <div style={styles.row}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Available Quantity</label>
@@ -210,15 +272,16 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                     onBlur={() => setFocusedInput("")}
                   >
                     <option value="">Select unit</option>
-                    <option value="piece">piece</option>
-                    <option value="set">set</option>
-                    <option value="unit">unit</option>
+                    <option value="Piece">Piece</option>
+                    <option value="Set">Set</option>
+                    <option value="Unit">Unit</option>
                   </select>
                   <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#991F1F", pointerEvents: "none" }} />
                 </div>
               </div>
             </div>
 
+            {/* Price & Status */}
             <div style={styles.row}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Price</label>
@@ -270,6 +333,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
               </div>
             </div>
 
+            {/* Disposal Tagging */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Disposal Tagging</label>
               <div style={{ position: "relative" }}>
@@ -285,9 +349,9 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                   onBlur={() => setFocusedInput("")}
                 >
                   <option value="">Select disposal tag</option>
-                  <option value="Dispose">Dispose</option>
-                  <option value="Review">Review</option>
-                  <option value="Good">Good</option>
+                  <option value="For Disposal">For Disposal</option>
+                  <option value="For Repair">For Repair</option>
+                  <option value="Good Condition">Good Condition</option>
                 </select>
                 <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#991F1F", pointerEvents: "none" }} />
               </div>

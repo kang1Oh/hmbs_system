@@ -5,6 +5,7 @@ import tempItemImg from "../assets/images/temp-item-img.png";
 import { FiTrash2 } from "react-icons/fi";
 import RequestSubmittedModal from "../components/RequestSubmittedModal";
 import { useCart } from "../context/CartContext";
+import { MdErrorOutline } from 'react-icons/md';
 import axios from "axios";
 
 // ---------------- Styles ----------------
@@ -79,6 +80,7 @@ const styles = {
     marginTop: "20px",
   },
   hr: { margin: "20px 0", border: "none", borderTop: "1px solid #ddd" },
+  errorIcon: { marginRight: '0.1rem' , marginBottom: '-4px' },
 };
 
 const required = (text) => (
@@ -348,7 +350,7 @@ function BorrowRequestForm() {
                   }
                 }}
               />
-              {weekendError && <p style={{ color: "red", fontSize: "13px" }}>{weekendError}</p>}
+              {weekendError && <p style={{ color: "red", fontSize: "13px" }}> <MdErrorOutline size={16} style={styles.errorIcon} /> {weekendError}</p>}
             </div>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>{required("Time Use")}</label>

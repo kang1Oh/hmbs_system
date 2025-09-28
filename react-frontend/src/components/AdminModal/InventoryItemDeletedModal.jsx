@@ -51,7 +51,6 @@ const InventoryItemDeletedModal = ({ onDone }) => {
       border: '1.5px solid #991F1F',
       padding: '8px 30px',
       borderRadius: '20px',
-      fontWeight: 'bold',
       fontSize: '16px',
       cursor: 'pointer',
       fontFamily: 'Poppins, sans-serif',

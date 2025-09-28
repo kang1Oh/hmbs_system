@@ -44,8 +44,11 @@ app.get('/', (req, res) => {
   res.send('Hello from Express!');
 });
 
-// serve the pdf folder statically
+// serve static files
+app.use("/csv_exports", express.static(path.join(__dirname, "csv_exports")));
 app.use("/pdf", express.static(path.join(__dirname, "pdf")));
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
 
 // Routes Mounting
 const roleRoutes = require('./routes/roles_routes');

@@ -1,18 +1,51 @@
-import React, { useState } from 'react';
-import { X } from 'lucide-react';
-import ImportSuccessModal from './ImportSuccessModal'; // Ensure this path is correct
-import ApprovedIcon from '../../assets/import-file.svg'; // Adjust path if needed
+import React, { useState } from "react";
+import { X } from "lucide-react";
+import ImportSuccessModal from "./ImportSuccessModal";
+import ApprovedIcon from "../../assets/import-file.svg";
+import axios from "axios";
 
 const ImportCSVModal = ({ onClose }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [importCount, setImportCount] = useState(null);
 
-  const handleImportClick = () => {
-    setShowSuccessModal(true);
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setError("");
+  };
+
+  const handleImportClick = async () => {
+    if (!file) {
+      setError("Please select a CSV file before importing.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/tools/import`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      setImportCount(res.data.tools.length);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error("Failed to import CSV:", err);
+      setError("Failed to import CSV. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    onClose(); // Close the parent modal too
+    onClose(); // Close parent modal too
   };
 
   const modalStyle = {
@@ -115,6 +148,13 @@ const ImportCSVModal = ({ onClose }) => {
     padding: 0,
     margin: 0,
   };
+  const errorStyle = {
+    color: "red",
+    textAlign: "center",
+    fontSize: "14px",
+    marginTop: "-10px",
+    marginBottom: "10px",
+  };
 
   return (
     <>
@@ -127,22 +167,36 @@ const ImportCSVModal = ({ onClose }) => {
             </button>
           </div>
 
-          <div style={dropZoneStyle}>
+          <div
+            style={dropZoneStyle}
+            onClick={() => document.getElementById("csv-upload").click()}
+          >
             <img src={ApprovedIcon} alt="Upload Icon" style={iconStyle} />
-            <div style={textStyle}>Select a CSV file to Import</div>
+            <div style={textStyle}>
+              {file ? file.name : "Select a CSV file to Import"}
+            </div>
             <div style={subTextStyle}>or drag and drop it here</div>
+            <input
+              id="csv-upload"
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
           </div>
+
+          {error && <p style={errorStyle}>{error}</p>}
 
           <div style={buttonRowStyle}>
             <button
               style={cancelBtn}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#991F1F';
-                e.target.style.color = '#fff';
+                e.target.style.backgroundColor = "#991F1F";
+                e.target.style.color = "#fff";
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#fff';
-                e.target.style.color = '#991F1F';
+                e.target.style.backgroundColor = "#fff";
+                e.target.style.color = "#991F1F";
               }}
               onClick={onClose}
             >
@@ -150,17 +204,22 @@ const ImportCSVModal = ({ onClose }) => {
             </button>
             <button
               style={importBtn}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = '#701923')}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = '#991F1F')}
+              onMouseEnter={(e) =>
+                (e.target.style.backgroundColor = "#701923")
+              }
+              onMouseLeave={(e) =>
+                (e.target.style.backgroundColor = "#991F1F")
+              }
               onClick={handleImportClick}
+              disabled={isUploading}
             >
-              Import File
+              {isUploading ? "Importing..." : "Import File"}
             </button>
           </div>
         </div>
       </div>
 
-      {showSuccessModal && <ImportSuccessModal onClose={handleSuccessClose} />}
+      {showSuccessModal && <ImportSuccessModal onClose={handleSuccessClose} count={importCount}/>}
     </>
   );
 };

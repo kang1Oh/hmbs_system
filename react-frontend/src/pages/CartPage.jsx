@@ -214,7 +214,10 @@ function CartPage() {
           ) : (
             cart.map(item => (
               <div key={item._id} style={itemBox}>
-                <img src={tempItemImg} alt={item.name} style={imgStyle} />
+                <img 
+                  src={'VITE_API_BASE_URL' in import.meta.env ? `${import.meta.env.VITE_API_BASE_URL}${item.img}` : tempItemImg}
+                  alt={item.name} 
+                  style={imgStyle} />
                 <div style={itemInfoSection}>
                   <div style={itemDetails}>
                     <div style={itemName}>{item.name}</div>

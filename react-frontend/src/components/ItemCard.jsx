@@ -1,7 +1,6 @@
 import React from 'react';
-import tempItemImg from '../assets/images/temp-item-img.png';
 
-function ItemCard({ name, qty, onClick }) { //add image prop when available
+function ItemCard({ name, qty, img, onClick }) { //add image prop when available
   const cardStyle = {
     backgroundColor: '#991F1F',
     color: '#fff',
@@ -38,7 +37,10 @@ function ItemCard({ name, qty, onClick }) { //add image prop when available
   return (
     <div style={cardStyle} onClick={onClick}>
       {/* Replace with actual image source when available ( <img src={image} alt={name} style={cardImageStyle} />) */}
-      <img src={tempItemImg} alt={name} style={cardImageStyle} /> 
+      <img 
+        src={`${import.meta.env.VITE_API_BASE_URL}${img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
+        alt={name} 
+        style={cardImageStyle} /> 
       <p style={cardTitleStyle}>{name}</p>
       <div style={qtyRowStyle}>
         <span>{qty} Available</span>
