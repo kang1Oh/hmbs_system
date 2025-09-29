@@ -1,7 +1,7 @@
 import React from 'react';
 import TrashBin from '../../assets/trashbin.svg'; // Make sure this path is correct
 
-const InventoryItemDeletedModal = ({ onDone }) => {
+const UserDeletedModal = ({ onDone }) => {
   const styles = {
     overlay: {
       position: 'fixed',
@@ -62,9 +62,9 @@ const InventoryItemDeletedModal = ({ onDone }) => {
     <div style={styles.overlay}>
       <div style={styles.modal}>
         <img src={TrashBin} alt="Deleted" style={styles.icon} />
-        <h2 style={styles.title}>Item Deleted</h2>
+        <h2 style={styles.title}>User Deleted</h2>
         <p style={styles.message}>
-          The item was successfully deleted from<br />the inventory.
+          The user was successfully deleted from<br />the registry.
         </p>
         <button style={styles.doneButton} onClick={onDone}
           onMouseEnter={e => e.target.style.backgroundColor = '#991F1F'}
@@ -79,4 +79,4 @@ const InventoryItemDeletedModal = ({ onDone }) => {
   );
 };
 
-export default InventoryItemDeletedModal;
+export default UserDeletedModal;

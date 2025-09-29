@@ -81,7 +81,7 @@ const CRUDInventoryPage = () => {
     exportButton: { padding: '7px 25px', background: '#15814dff', color: 'white', border: '1px solid #15814dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
     addButton: { backgroundColor: '#991F1F', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Poppins, sans-serif' },
     table: { width: '100%', borderCollapse: 'separate', borderSpacing: 0, borderLeft: '1px solid #991F1F', borderRight: '1px solid #991F1F', borderBottom: '1px solid #991F1F', borderRadius: '10px', overflow: 'hidden', fontFamily: 'Poppins, sans-serif' },
-    th: { backgroundColor: '#991f1f', color: 'white', padding: '0.90rem', textAlign: 'center', fontSize: '15px', fontFamily: 'Poppins, sans-serif', fontWeight: '600' },
+    th: { backgroundColor: '#991f1f', color: 'white', padding: '0.90rem', textAlign: 'center', fontSize: '15px', fontFamily: 'Poppins, sans-serif', fontWeight: '500' },
     td: { padding: '0.70rem', borderBottom: '1px solid #ccc', backgroundColor: '#fff', fontFamily: 'Poppins, sans-serif', textAlign: 'center' },
     statusAvailable: { backgroundColor: '#2d9cdb', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '99px', fontSize: '0.8rem', textAlign: 'center', fontWeight: '500', display: 'inline-block', width: '100px', fontFamily: 'Poppins, sans-serif' },
     statusUnavailable: { backgroundColor: '#DC2626', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '99px', fontSize: '0.8rem', textAlign: 'center', fontWeight: '500', display: 'inline-block', width: '100px', fontFamily: 'Poppins, sans-serif' },
@@ -254,15 +254,33 @@ const CRUDInventoryPage = () => {
             >
               <FaChevronLeft />
             </button>
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <button
-                key={index}
-                style={styles.pageButton(currentPage === index + 1)}
-                onClick={() => setCurrentPage(index + 1)}
-              >
-                {index + 1}
-              </button>
-            ))}
+
+            {(() => {
+              const maxVisible = 5; // show 5 pages at a time
+              const half = Math.floor(maxVisible / 2);
+
+              let start = Math.max(1, currentPage - half);
+              let end = Math.min(totalPages, start + maxVisible - 1);
+
+              // Adjust start if we're at the end
+              if (end - start + 1 < maxVisible) {
+                start = Math.max(1, end - maxVisible + 1);
+              }
+
+              return Array.from({ length: end - start + 1 }).map((_, index) => {
+                const page = start + index;
+                return (
+                  <button
+                    key={page}
+                    style={styles.pageButton(currentPage === page)}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+            })()}
+
             <button
               style={styles.navIconButton(currentPage === totalPages)}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}

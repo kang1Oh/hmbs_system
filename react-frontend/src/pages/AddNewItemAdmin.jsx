@@ -442,7 +442,13 @@ const AddNewItemAdmin = () => {
         </form>
 
 
-        {isImportModalOpen && <ImportCSVModal onClose={() => setIsImportModalOpen(false)} />}
+        {isImportModalOpen && 
+          <ImportCSVModal 
+            onClose={() => setIsImportModalOpen(false)} 
+            endpoint={"/api/tools/import"}
+            entityName={"tool"}
+          />
+          }
         {isItemAddedModalOpen && <NewItemAddedModal onClose={() => setIsItemAddedModalOpen(false)} />}
       </main>
     </div>

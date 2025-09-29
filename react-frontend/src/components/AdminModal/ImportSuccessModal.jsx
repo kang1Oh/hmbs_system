@@ -1,7 +1,7 @@
 import React from 'react';
 import ApprovedCircle from '../../assets/approved-circle.svg'; // Adjust the path as needed
 
-function ImportSuccessModal({ onClose , count}) {
+const ImportSuccessModal = ({ onClose, count, entityName }) => {
   const modalStyle = {
     position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -75,15 +75,21 @@ function ImportSuccessModal({ onClose , count}) {
         <img src={ApprovedCircle} alt="Approved" style={iconStyle} />
         <div style={titleStyle}>Import Successful</div>
         <p style={textStyle}>
-          The file was successfully imported. <br />
-          <strong>{count}</strong> tool{count !== 1 ? "s" : ""} have been added.
+          {count > 0 ? (
+            <>
+              The file was successfully imported.<br />
+              <strong>{count}</strong> {entityName}
+              {count !== 1 ? "s" : ""} added.
+            </>
+          ) : (
+            "No new records were added."
+          )}
         </p>
-        <button
-          style={btnStyle}
-          onMouseEnter={handleMouseEnter}
+        <button 
+          style={btnStyle} 
+          onMouseEnter={handleMouseEnter} 
           onMouseLeave={handleMouseLeave}
-          onClick={onClose}
-        >
+          onClick={onClose}>
           Done
         </button>
       </div>

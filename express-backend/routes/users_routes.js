@@ -4,10 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const { Parser } = require('json2csv');
 const { users } = require('../models/db');
+const upload = require('../middleware/upload');
+const csv = require('csv-parser');
+const multer = require('multer');
+const uploadMiddleware = multer({ dest: 'uploads/' });
 
 // 📤 EXPORT current DB to CSV into /csv_exports
 router.get('/export', requireAuth, (req, res) => {
-  users.find({}, (err, docs) => {
+  users.find({}).sort({ user_id: 1 }).exec((err, docs) => {
     if (err) return res.status(500).json({ error: err });
 
     // match seeder columns
@@ -35,6 +39,98 @@ router.get('/export', requireAuth, (req, res) => {
     res.attachment('users.csv');
     res.send(csv);
   });
+});
+
+const validRoles = [1, 2, 3, 4];
+
+// 📥 IMPORT users from uploaded CSV file (with header validation)
+router.post("/import", uploadMiddleware.single("file"), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+  const requiredHeaders = ["name", "email", "password", "role_id"];
+  const results = [];
+  let headersValidated = false;
+
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on("headers", (headers) => {
+      const normalized = headers.map((h) => h.trim().toLowerCase());
+      const missing = requiredHeaders.filter(
+        (h) => !normalized.includes(h.toLowerCase())
+      );
+
+      if (missing.length > 0) {
+        fs.unlinkSync(req.file.path);
+        return res
+          .status(400)
+          .json({ message: `Missing required columns: ${missing.join(", ")}` });
+      }
+
+      headersValidated = true;
+    })
+    
+    .on("data", (row) => {
+      if (headersValidated) {
+        const roleId = Number(row.role_id);
+        if (!validRoles.includes(roleId)) return; // skip invalid roles
+
+        results.push({
+          name: row.name,
+          email: row.email.trim().toLowerCase(), // normalize
+          password: row.password,
+          role_id: Number(row.role_id),
+          active: true,
+          createdAt: new Date(),
+        });
+      }
+    })
+    .on("end", () => {
+      if (results.length === 0) {
+        fs.unlinkSync(req.file.path);
+        return res
+          .status(400)
+          .json({ message: "CSV file contained no valid rows" });
+      }
+
+      // Grab all emails first
+      const emails = results.map((r) => r.email);
+
+      users.find({ email: { $in: emails } }, (err, existing) => {
+        if (err) return res.status(500).json({ error: err });
+
+        const existingEmails = new Set(existing.map((u) => u.email));
+        const filtered = results.filter((r) => !existingEmails.has(r.email));
+
+        if (filtered.length === 0) {
+          fs.unlinkSync(req.file.path);
+          return res.json({ message: "No new users imported (all duplicates)" });
+        }
+
+        // get max user_id
+        users.find({}).sort({ user_id: -1 }).limit(1).exec((err, docs) => {
+          if (err) return res.status(500).json({ error: err });
+
+          const maxId = (docs && docs[0] && Number(docs[0].user_id)) || 0;
+          let nextId = maxId + 1;
+
+          const usersWithIds = filtered.map((user, idx) => ({
+            ...user,
+            user_id: nextId + idx,
+          }));
+
+          users.insert(usersWithIds, (err, newDocs) => {
+            fs.unlinkSync(req.file.path);
+            if (err) return res.status(500).json({ error: err });
+
+            const safeDocs = newDocs.map(({ password, ...rest }) => rest);
+            res.json({
+              message: `Imported ${newDocs.length} users (duplicates skipped)`,
+              users: safeDocs,
+            });
+          });
+        });
+      });
+    });
 });
 
 // auth helper
@@ -65,7 +161,7 @@ function getNextUserId(cb) {
 
 // GET all users (hide password)
 router.get('/', (req, res) => {
-  users.find({}, (err, docs) => {
+  users.find({ active: true }).sort({ user_id: 1 }).exec((err, docs) => {
     if (err) return res.status(500).json({ error: err });
     const result = docs.map(({ password, ...rest }) => rest);
     res.json(result);

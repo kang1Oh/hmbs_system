@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const NedbStore = require('nedb-session-store')(session);
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
@@ -30,10 +31,13 @@ app.use(
     secret: process.env.SESSION_SECRET || 'supersecretkey',
     resave: false,
     saveUninitialized: false,
+    store: new NedbStore({
+      filename: path.join(__dirname, 'data', 'sessions.db'), // persistent session file
+    }),
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',   // good for same-origin (via Vite proxy)
-      secure: false,     // true only behind HTTPS
+      sameSite: 'lax',
+      secure: false,
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })

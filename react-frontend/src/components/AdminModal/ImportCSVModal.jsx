@@ -4,7 +4,7 @@ import ImportSuccessModal from "./ImportSuccessModal";
 import ApprovedIcon from "../../assets/import-file.svg";
 import axios from "axios";
 
-const ImportCSVModal = ({ onClose }) => {
+const ImportCSVModal = ({ onClose, endpoint, entityName, onImportSuccess}) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
@@ -28,12 +28,16 @@ const ImportCSVModal = ({ onClose }) => {
       formData.append("file", file);
 
       const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tools/import`,
+        `${import.meta.env.VITE_API_BASE_URL}${endpoint}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      setImportCount(res.data.tools.length);
+      if (onImportSuccess) onImportSuccess();  // Refresh parent data if callback provided
+
+      // Dynamically pick the returned array (users vs tools)
+      const importedRecords = res.data.tools || res.data.users || [];
+      setImportCount(importedRecords.length);
       setShowSuccessModal(true);
     } catch (err) {
       console.error("Failed to import CSV:", err);
@@ -219,7 +223,13 @@ const ImportCSVModal = ({ onClose }) => {
         </div>
       </div>
 
-      {showSuccessModal && <ImportSuccessModal onClose={handleSuccessClose} count={importCount}/>}
+      {showSuccessModal && 
+        <ImportSuccessModal 
+          onClose={handleSuccessClose} 
+          count={importCount}
+          entityName={entityName}
+        />
+      }
     </>
   );
 };

@@ -1,6 +1,9 @@
 import React from 'react';
 import { FaUserCheck } from 'react-icons/fa';
 
+const handleMouseEnter = (e) => Object.assign(e.target.style, btnHover);
+const handleMouseLeave = (e) => Object.assign(e.target.style, btnStyle);
+
 const UserAddedModal = ({ onDone }) => {
   return (
     <div style={styles.overlay}>
@@ -8,7 +11,13 @@ const UserAddedModal = ({ onDone }) => {
         <FaUserCheck style={styles.icon} />
         <h2 style={styles.title}>User Registered</h2>
         <p style={styles.message}>The user has been successfully registered</p>
-        <button style={styles.doneBtn} onClick={onDone}>Done</button>
+        <button 
+          style={styles.btnStyle} 
+          onMouseEnter={handleMouseEnter} 
+          onMouseLeave={handleMouseLeave}
+          onClick={onDone}>
+          Done
+        </button>
       </div>
     </div>
   );
@@ -36,6 +45,7 @@ const styles = {
     fontSize: '64px',
     color: '#8A1F2B',
     marginBottom: '16px',
+    marginLeft: '16px',
   },
   title: {
     fontSize: '22px',
@@ -43,19 +53,27 @@ const styles = {
     marginBottom: '8px',
   },
   message: {
-    fontSize: '14px',
+    fontSize: '16px',
     color: '#444',
     marginBottom: '24px',
   },
-  doneBtn: {
-    backgroundColor: '#fff',
-    color: '#8A1F2B',
-    border: '2px solid #8A1F2B',
-    padding: '10px 24px',
-    borderRadius: '20px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
 };
+
+const btnStyle = {
+    backgroundColor: '#fff',
+    color: '#991F1F',
+    padding: '8px 30px',
+    borderRadius: '999px',
+    border: '1.5px solid #991F1F',
+    fontWeight: 'bold',
+    fontSize: '16px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontFamily: "'Poppins', sans-serif",
+  };
+const btnHover = {
+    backgroundColor: '#991F1F',
+    color: '#fff',
+  };
 
 export default UserAddedModal;

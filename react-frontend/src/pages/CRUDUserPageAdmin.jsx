@@ -1,49 +1,28 @@
-// All existing imports remain the same
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import AddUserModal from '../components/AdminModal/AddUserModal';
 import UserAddedModal from '../components/AdminModal/UserAddedModal';
+import UserDeletionModal from '../components/AdminModal/UserDeletionModal';
+import UserDeletedModal from '../components/AdminModal/UserDeletedModal';
 import ImportCSVModal from '../components/AdminModal/ImportCSVModal';
-import ImportSuccessModal from '../components/AdminModal/ImportSuccessModal';
 import { FaFileAlt, FaBoxOpen, FaClipboardList, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FiPlus } from 'react-icons/fi';
+import { Trash2 } from 'lucide-react';
+import axios from 'axios';
 
 const USERS_PER_PAGE = 5;
-
-// Different dummy data for each tab
-const dummyDataByRole = {
-  Custodians: Array.from({ length: 10 }, (_, index) => ({
-    id: index + 1,
-    userId: `2022-${String(index + 1).padStart(5, '0')}`,
-    name: `Custodian User ${index + 1}`,
-    email: `custodian${index + 1}@usep.edu.ph`,
-  })),
-  'Program Heads': Array.from({ length: 20 }, (_, index) => ({
-    id: index + 1,
-    userId: `2022-${String(index + 1).padStart(5, '0')}`,
-    name: `Program Head User ${index + 1}`,
-    email: `proghead${index + 1}@usep.edu.ph`,
-  })),
-  Instructors: Array.from({ length: 30 }, (_, index) => ({
-    id: index + 1,
-    userId: `2022-${String(index + 1).padStart(5, '0')}`,
-    name: `Instructor User ${index + 1}`,
-    email: `instructor${index + 1}@usep.edu.ph`,
-  })),
-};
-
-// Dummy student list (separate)
-const dummyStudents = Array.from({ length: 15 }, (_, index) => ({
-  id: index + 1,
-  userId: `2022-STU-${String(index + 1).padStart(5, '0')}`,
-  name: `Student User ${index + 1}`,
-  email: `student${index + 1}@usep.edu.ph`,
-}));
 
 const roleTabs = ['Custodians', 'Program Heads', 'Instructors'];
 
 const CRUDUserPageAdmin = () => {
+  const [users, setUsers] = useState([]);
+  const [staffByRole, setStaffByRole] = useState({});
+  const [students, setStudents] = useState([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showUserAddedModal, setShowUserAddedModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUserDeletedModal, setShowUserDeletedModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
   const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
   const [activeTab, setActiveTab] = useState(roleTabs[0]);
@@ -67,7 +46,7 @@ const CRUDUserPageAdmin = () => {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '2rem',
+      marginBottom: '1.5rem',
     },
     titleGroup: {
       display: 'flex',
@@ -185,7 +164,91 @@ const CRUDUserPageAdmin = () => {
       opacity: disabled ? 0.5 : 1,
       cursor: disabled ? 'not-allowed' : 'pointer',
     }),
+    exportButton: { padding: '7px 25px', background: '#15814dff', color: 'white', border: '1px solid #15814dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
+    addButton: { backgroundColor: '#991F1F', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Poppins, sans-serif' },
+    
   };
+
+  // 📤 Handle Export CSV
+  const handleExport = async () => {
+    // when requesting export
+    axios.get('/api/users/export', {
+      withCredentials: true, // 🔑 required so session cookie is sent
+      responseType: 'blob',  // so browser handles CSV download correctly
+    })
+    .then((res) => {
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'users.csv');
+      document.body.appendChild(link);
+      link.click();
+    })
+    .catch((err) => {
+      console.error("Export failed:", err.response?.data || err.message);
+    });
+  };
+
+  // fetch all users
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get('/api/users', { withCredentials: true });
+      setUsers(res.data);
+      groupUsers(res.data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const groupUsers = (all) => {
+    // Group staff (role_id 1 2 and 3) and students (role_id 4)
+    const staff = {
+      'Custodians': all.filter(u => u.role_id === 1),
+      'Instructors': all.filter(u => u.role_id === 2),
+      'Program Heads': all.filter(u => u.role_id === 3),
+    };
+    const studs = all.filter(u => u.role_id === 4);
+
+    setStaffByRole(staff);
+    setStudents(studs);
+  };
+
+  const handleRegisterUser = async (formData) => {
+    try {
+      const roleIDMap = {
+        Student: 4,
+        Instructor: 2,
+        'Program Head': 3,
+        Custodian: 1,
+      };
+
+      const payload = {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role_id: roleIDMap[formData.role],
+      };
+
+      const res = await axios.post('/api/users', payload, { withCredentials: true });
+
+      // res.data contains the new user (safeDoc without password)
+      await fetchUsers(); // refresh user list
+      setShowUserAddedModal(true);
+      setShowAddUserModal(false);
+    } catch (err) {
+      console.error('Error adding user:', err);
+      if (err.response?.data?.error) {
+        toast.error(`Failed to add user: ${err.response.data.error}`);
+      } else {
+        toast.error('Failed to add user: Unknown error');
+      }
+    }
+  };
+
 
   const handlePageChange = (page, setter, totalItems) => {
     if (page >= 1 && page <= Math.ceil(totalItems / USERS_PER_PAGE)) {
@@ -212,16 +275,30 @@ const CRUDUserPageAdmin = () => {
                 <th style={styles.th}>Name</th>
                 <th style={styles.th}>Email</th>
                 <th style={styles.th}>Role</th>
+                <th style={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {getPaginated(data, page).map((user, index) => (
-                <tr key={user.id}>
+                <tr key={user._id}>
                   <td style={styles.td}>{index + 1 + (page - 1) * USERS_PER_PAGE}</td>
-                  <td style={styles.td}>{user.userId}</td>
+                  <td style={styles.td}>{user.user_id}</td>
                   <td style={styles.td}>{user.name}</td>
                   <td style={styles.td}>{user.email}</td>
                   <td style={styles.td}>{roleLabel}</td>
+                  <td style={styles.td}>
+                    <div style={styles.actionIcons}>
+                      <Trash2
+                        size={16}
+                        title="Delete User"
+                        style={{ color: '#000', cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowDeleteModal(true);
+                        }}
+                      />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -240,15 +317,33 @@ const CRUDUserPageAdmin = () => {
           >
             <FaChevronLeft />
           </button>
-          {Array.from({ length: Math.ceil(totalItems / USERS_PER_PAGE) }).map((_, index) => (
-            <button
-              key={index}
-              style={styles.pageButton(page === index + 1)}
-              onClick={() => handlePageChange(index + 1, setPage, totalItems)}
-            >
-              {index + 1}
-            </button>
-          ))}
+
+          {(() => {
+            const totalPages = Math.ceil(totalItems / USERS_PER_PAGE);
+            const maxVisible = 5;
+            const half = Math.floor(maxVisible / 2);
+
+            let start = Math.max(1, page - half);
+            let end = Math.min(totalPages, start + maxVisible - 1);
+
+            if (end - start + 1 < maxVisible) {
+              start = Math.max(1, end - maxVisible + 1);
+            }
+
+            return Array.from({ length: end - start + 1 }).map((_, index) => {
+              const pageNum = start + index;
+              return (
+                <button
+                  key={pageNum}
+                  style={styles.pageButton(page === pageNum)}
+                  onClick={() => handlePageChange(pageNum, setPage, totalItems)}
+                >
+                  {pageNum}
+                </button>
+              );
+            });
+          })()}
+
           <button
             style={styles.navIconButton(page === Math.ceil(totalItems / USERS_PER_PAGE))}
             onClick={() => handlePageChange(page + 1, setPage, totalItems)}
@@ -279,14 +374,18 @@ const CRUDUserPageAdmin = () => {
             <h2 style={{ margin: 0, lineHeight: '1.2', fontWeight: 'bold' }}>Registered Users</h2>
             <p style={styles.subtitle}>View the list of all registered users in the system and their roles</p>
           </div>
-          <button style={styles.button} onClick={() => setShowAddUserModal(true)}>Add New User</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button style={styles.exportButton} onClick={handleExport}>Export CSV</button>
+            <button style={styles.addButton} onClick={() => setShowAddUserModal(true)}>
+              <FiPlus /> Add New User
+            </button>
+          </div>
         </div>
 
         {/* Staff Section */}
         <div style={styles.groupedSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={styles.sectionTitle}>Staffs</p>
-            <button style={styles.button} onClick={() => setShowImportCSVModal(true)}>Import CSV File</button>
           </div>
           <div style={styles.tabsContainer}>
             {roleTabs.map((role) => (
@@ -302,7 +401,7 @@ const CRUDUserPageAdmin = () => {
               </div>
             ))}
           </div>
-          {renderTable(dummyDataByRole[activeTab], styles.staffTableWrapper, currentPage, setCurrentPage, activeTab)}
+          {renderTable(staffByRole[activeTab] || [], styles.staffTableWrapper, currentPage, setCurrentPage, activeTab)}
         </div>
 
         {/* Student Section */}
@@ -311,7 +410,7 @@ const CRUDUserPageAdmin = () => {
             <p style={styles.sectionTitle}>Students</p>
             <button style={styles.button} onClick={() => setShowImportCSVModal(true)}>Import CSV File</button>
           </div>
-          {renderTable(dummyStudents, styles.studentTableWrapper, studentPage, setStudentPage, 'Student')}
+          {renderTable(students, styles.studentTableWrapper, studentPage, setStudentPage, 'Student')}
         </div>
       </main>
 
@@ -319,23 +418,36 @@ const CRUDUserPageAdmin = () => {
       {showAddUserModal && (
         <AddUserModal
           onClose={() => setShowAddUserModal(false)}
-          onRegister={() => {
-            setShowAddUserModal(false);
-            setShowUserAddedModal(true);
-          }}
+          onRegister={(formData) => handleRegisterUser(formData)}
         />
       )}
       {showUserAddedModal && <UserAddedModal onDone={() => setShowUserAddedModal(false)} />}
-      {showImportCSVModal && (
-        <ImportCSVModal
-          onClose={() => setShowImportCSVModal(false)}
-          onImport={() => {
-            setShowImportCSVModal(false);
-            setShowImportSuccessModal(true);
+      {showDeleteModal && (
+        <UserDeletionModal
+          user={selectedUser}
+          onCancel={() => setShowDeleteModal(false)}
+          onDelete={async () => {
+            try {
+              await axios.delete(`/api/users/${selectedUser._id}`, { withCredentials: true });
+              setShowDeleteModal(false);
+              setShowUserDeletedModal(true);
+
+              fetchUsers(); // refresh list
+            } catch (err) {
+              console.error("Failed to delete user:", err);
+            }
           }}
         />
       )}
-      {showImportSuccessModal && <ImportSuccessModal onDone={() => setShowImportSuccessModal(false)} />}
+      {showUserDeletedModal && (<UserDeletedModal onDone={() => setShowUserDeletedModal(false)} />)}
+      {showImportCSVModal && (
+        <ImportCSVModal
+          onClose={() => setShowImportCSVModal(false)}
+          endpoint={"/api/users/import"}
+          entityName={"user"}
+          onImportSuccess={fetchUsers}
+        />
+      )}
     </div>
   );
 };

@@ -15,7 +15,7 @@ function StaffLoginPage() {
   const handleLogIn = async () => {
     try {
       const res = await axios.post(
-        "api/users/login", 
+        "/api/users/login", 
         { email, password },
         { withCredentials: true } // Ensure cookies are sent with the request
       );

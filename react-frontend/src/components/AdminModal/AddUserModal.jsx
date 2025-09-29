@@ -1,27 +1,24 @@
 import React, { useState } from 'react';
 import { MdErrorOutline } from 'react-icons/md';
+import { Eye, EyeOff } from 'lucide-react';
 
 const AddUserModal = ({ onClose, onRegister }) => {
   const [formData, setFormData] = useState({
     fullName: '',
-    studentId: '',
     email: '',
     password: '',
     role: '',
   });
 
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const validate = () => {
     const newErrors = {};
-
     if (!formData.fullName.trim()) newErrors.fullName = 'Full Name is required';
-    if (!formData.studentId.trim()) newErrors.studentId = 'Student ID is required';
-    else if (!/^\d+$/.test(formData.studentId.trim())) newErrors.studentId = 'Student ID must be a number';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.password.trim()) newErrors.password = 'Password is required';
     if (!formData.role.trim()) newErrors.role = 'User Role is required';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,7 +41,6 @@ const AddUserModal = ({ onClose, onRegister }) => {
     onRegister(formData);
     setFormData({
       fullName: '',
-      studentId: '',
       email: '',
       password: '',
       role: '',
@@ -62,12 +58,27 @@ const AddUserModal = ({ onClose, onRegister }) => {
           ...styles.input,
           border: errors[name] ? '2px solid #e53935' : '1px solid #000',
         }}
-        type={type}
+        type={name === 'password' && showPassword ? 'text' : type}
         name={name}
         placeholder={placeholder}
         value={formData[name]}
         onChange={handleChange}
       />
+      {name === 'password' && (
+        <span
+          onClick={() => setShowPassword((prev) => !prev)}
+          style={{
+            position: 'absolute',
+            right: '3rem',
+            top: '60%',
+            transform: 'translateY(-50%)',
+            cursor: 'pointer',
+            color: '#555',
+          }}
+        >
+          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </span>
+      )}
       {errors[name] && (
         <div style={styles.errorText}>
           <MdErrorOutline style={styles.errorIcon} />
@@ -88,7 +99,6 @@ const AddUserModal = ({ onClose, onRegister }) => {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           {renderInput('Full Name', 'fullName', 'text', 'Enter Full Name')}
-          {renderInput('Student ID', 'studentId', 'text', 'Enter ID Number')}
           {renderInput('Email', 'email', 'email', 'Enter Email')}
           {renderInput('Password', 'password', 'password', 'Enter Password')}
 

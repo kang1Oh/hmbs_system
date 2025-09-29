@@ -11,7 +11,7 @@ const uploadMiddleware = multer({ dest: 'uploads/' });
 
 // 📤 EXPORT current DB to CSV into /csv_exports folder
 router.get('/export', (req, res) => {
-  tools.find({}, (err, docs) => {
+  tools.find({}).sort({ tool_id: 1 }).exec((err, docs) => {
     if (err) return res.status(500).json({ error: err });
 
     const fields = [

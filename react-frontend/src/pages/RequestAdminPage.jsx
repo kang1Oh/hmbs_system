@@ -270,7 +270,20 @@ const RequestAdminPage = () => {
   };
 
   // Render pagination bar (only numbers + nav)
-  const renderPagination = (currentPage, totalPages, setPage) => (
+  const renderPagination = (currentPage, totalPages, setPage) => {
+  const maxVisible = 5;
+  const half = Math.floor(maxVisible / 2);
+
+  let start = Math.max(1, currentPage - half);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+  return (
     <div style={styles.paginationContainer}>
       <button
         onClick={() => setPage(Math.max(1, currentPage - 1))}
@@ -279,13 +292,15 @@ const RequestAdminPage = () => {
         onMouseLeave={() => setHoveredArrow(null)}
         style={{
           ...styles.navButton(currentPage === 1),
-          ...(hoveredArrow === 'left' && currentPage !== 1 ? { backgroundColor: '#a22c38' } : {}),
+          ...(hoveredArrow === 'left' && currentPage !== 1
+            ? { backgroundColor: '#a22c38' }
+            : {}),
         }}
       >
         <FaChevronLeft />
       </button>
 
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+      {pages.map((num) => (
         <button
           key={num}
           onClick={() => setPage(num)}
@@ -318,6 +333,8 @@ const RequestAdminPage = () => {
       </button>
     </div>
   );
+};
+
 
   // Dropdown options
   const dropdownOptions = ['All Status', 'New', 'On-Going', 'Declined'];
