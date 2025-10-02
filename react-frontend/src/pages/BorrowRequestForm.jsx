@@ -90,7 +90,7 @@ const required = (text) => (
 );
 
 // ---------------- Autocomplete ----------------
-function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
+function AutocompleteInput({ value, onChange, onSelect, inputStyle, role }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -99,7 +99,7 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
     if (!query.trim()) return setSuggestions([]);
     try {
       setLoading(true);
-      const res = await fetch(`/api/users/search/${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/users/search/${role}/${encodeURIComponent(query)}`);
       const data = await res.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch {
@@ -122,26 +122,11 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
           setOpen(true);
           fetchSuggestions(q);
         }}
-        placeholder="Enter student name"
+        placeholder={role === 4 ? "Enter student name" : "Enter instructor name"}
         style={inputStyle}
       />
       {open && suggestions.length > 0 && (
-        <ul
-          style={{
-            position: "absolute",
-            listStyle: "none",
-            margin: 0,
-            padding: "6px 8px",
-            width: "100%",
-            borderRadius: "6px",
-            zIndex: 10,
-            maxHeight: "160px",
-            overflowY: "auto",
-            background: "#fff",
-            border: "1px solid #030303ff",
-            fontSize: "14px",
-          }}
-        >
+        <ul style={{position: "absolute", listStyle: "none", margin: 0, padding: "6px 8px", width: "100%", borderRadius: "6px", zIndex: 10, maxHeight: "160px", overflowY: "auto", background: "#fff", border: "1px solid #030303ff", fontSize: "14px",}}>
           {suggestions.map((s) => (
             <li
               key={s._id}
@@ -158,19 +143,8 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle }) {
         </ul>
       )}
       {open && value.trim() && !loading && suggestions.length === 0 && (
-        <div
-          style={{
-            position: "absolute",
-            background: "#fff",
-            border: "1px solid #030303ff",
-            fontSize: "14px",
-            padding: "6px 8px",
-            width: "100%",
-            zIndex: 10,
-            borderRadius: "6px",
-          }}
-        >
-          No student registered
+        <div style={{ position: "absolute", background: "#fff", border: "1px solid #030303ff", fontSize: "14px", padding: "6px 8px", width: "100%", zIndex: 10, borderRadius: "6px",}}>
+          No {role === 4 ? "student" : "instructor"} registered
         </div>
       )}
     </div>
@@ -183,12 +157,13 @@ function BorrowRequestForm() {
 
   const [groupMembers, setGroupMembers] = useState([{ _id: null, name: "" }]);
   const [groupLeader, setGroupLeader] = useState({ _id: null, name: "" });
+  const [instructor, setInstructor] = useState({ _id: null, name: "" });
   const today = new Date().toISOString().split("T")[0];
   const [dateRequested, setDateRequested] = useState(today);
   const [dateUse, setDateUse] = useState("");
   const [weekendError, setWeekendError] = useState("");
   const [timeUse, setTimeUse] = useState("");
-  const [course, setCourse] = useState("");
+  const [subject, setSubject] = useState("");
 
   const [isFormValid, setIsFormValid] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -200,7 +175,9 @@ function BorrowRequestForm() {
 
     const checkOngoing = async () => {
       try {
-        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+        const { data: requests } = await axios.get(
+          `/api/borrow-requests/by-group-or-user/${storedUser._id}`
+        );
         const ongoing = requests.some(
           (r) => r.status_id !== 5 && r.status_id !== 6
         );
@@ -215,16 +192,18 @@ function BorrowRequestForm() {
   useEffect(() => {
     const hasEmptyMember = groupMembers.some((m) => !m._id || !m.name.trim());
     const validLeader = groupLeader._id && groupLeader.name.trim();
+    const InstructorValid = instructor._id && instructor.name.trim();
     setIsFormValid(
       dateRequested &&
         dateUse &&
         timeUse &&
-        course &&
+        subject &&
         validLeader &&
+        InstructorValid &&
         !hasEmptyMember &&
         cart.length > 0
     );
-  }, [dateRequested, dateUse, timeUse, course, groupLeader, groupMembers, cart]);
+  }, [dateRequested, dateUse, timeUse, subject, groupLeader, groupMembers, cart]);
 
   const handleMemberChange = (idx, val) => {
     const updated = [...groupMembers];
@@ -238,13 +217,14 @@ function BorrowRequestForm() {
 
     try {
       const payload = {
-        user_id: storedUser.user_id,
+        user_id: storedUser._id,
         status_id: 1,
         request_slip_id: Math.floor(Math.random() * 90000) + 10000,
         lab_date: dateUse,
         date_requested: dateRequested,
         lab_time: timeUse,
-        course,
+        subject: subject,
+        instructor_id: instructor._id,
       };
 
       // create borrow request
@@ -280,7 +260,8 @@ function BorrowRequestForm() {
       setDateUse("");
       setDateRequested("");
       setTimeUse("");
-      setCourse("");
+      setSubject("");
+      setInstructor({ _id: null, name: "" });
       setGroupLeader({ _id: null, name: "" });
       setGroupMembers([{ _id: null, name: "" }]);
       setIsModalOpen(true);
@@ -363,29 +344,41 @@ function BorrowRequestForm() {
             </div>
           </div>
 
-          {/* Group Leader + Course */}
+          {/* Instructor & Subject */}
+          <div style={styles.row}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>{required("Instructor")}</label>
+              <AutocompleteInput
+                role={2} // instructor
+                value={instructor.name}
+                onChange={(val) => setInstructor({ _id: null, name: val })}
+                onSelect={(u) => setInstructor({ _id: u._id, name: u.name })}
+                inputStyle={styles.input}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>{required("Subject")}</label>
+              <input
+                type="text"
+                style={styles.input}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter subject"
+              />
+            </div>
+          </div>
+
+          {/* Group Leader */}
           <div style={styles.row}>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>{required("Group Leader")}</label>
               <AutocompleteInput
+                role={4} // student
                 value={groupLeader.name}
                 onChange={(val) => setGroupLeader({ _id: null, name: val })}
                 onSelect={(u) => setGroupLeader({ _id: u._id, name: u.name })}
                 inputStyle={styles.input}
               />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>{required("Course")}</label>
-              <select
-                style={styles.select}
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-              >
-                <option value="" disabled>
-                  Select a course
-                </option>
-                <option value="Hospitality Management">Hospitality Management</option>
-              </select>
             </div>
           </div>
 
@@ -398,6 +391,7 @@ function BorrowRequestForm() {
             >
               <div style={{ flex: 1 }}>
                 <AutocompleteInput
+                  role={4} // student
                   value={m.name}
                   onChange={(val) => handleMemberChange(idx, { _id: null, name: val })}
                   onSelect={(u) => handleMemberChange(idx, { _id: u._id, name: u.name })}
@@ -460,7 +454,7 @@ function BorrowRequestForm() {
           ) : (
             cart.map((item) => (
               <div key={item._id} style={styles.itemCard}>
-                <img src={tempItemImg} alt={item.name} style={styles.img} />
+                <img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt={item.name} style={styles.img} />
                 <div>
                   <strong>{item.name}</strong>
                   <p style={{ margin: "4px 0", color: "#555" }}>

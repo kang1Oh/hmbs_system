@@ -11,6 +11,7 @@ async function runSeeders() {
     const { testCategoriesAPI } = require('../data-load/categories_data');
     const { testGroupsAPI } = require('../data-load/groups_data');
     const { testReleasesAPI } = require('../data-load/release_data');
+    const { testReturnsAPI } = require('../data-load/returns_data');
     const { testRolesAPI } = require('../data-load/roles_data');
     const { testStatusesAPI } = require('../data-load/statuses_data');
 
@@ -24,6 +25,7 @@ async function runSeeders() {
     await testBorrowItemsAPI();
     await testApprovalsAPI();
     await testReleasesAPI();
+    await testReturnsAPI();
     await testStatusesAPI();
 
     console.log("✅ Seeding completed!");

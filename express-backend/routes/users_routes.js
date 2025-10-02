@@ -186,16 +186,27 @@ router.get('/:id', (req, res) => {
   });
 });
 
-// SEARCH by name limited to students (role_id 4)
-router.get('/search/:name', (req, res) => {
-  const regex = new RegExp(req.params.name, 'i');
-  users.find({ name: regex, role_id: { $in: [4, "4"]} }, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!docs || docs.length === 0) return res.json([]);
-    const unique = {};
-    docs.forEach(u => { unique[u.email] = { _id: u._id, user_id: u.user_id, name: u.name, email: u.email }; });
-    res.json(Object.values(unique));
-  });
+// SEARCH by name + role
+router.get('/search/:role/:name', (req, res) => {
+  const { role, name } = req.params;
+  const regex = new RegExp(name, 'i');
+  users.find(
+    { name: regex, role_id: { $in: [Number(role), role] } },
+    (err, docs) => {
+      if (err) return res.status(500).json({ error: err });
+      if (!docs || docs.length === 0) return res.json([]);
+      const unique = {};
+      docs.forEach(u => {
+        unique[u.email] = {
+          _id: u._id,
+          user_id: u.user_id,
+          name: u.name,
+          email: u.email,
+        };
+      });
+      res.json(Object.values(unique));
+    }
+  );
 });
 
 // POST create user. Assign numeric user_id if absent.

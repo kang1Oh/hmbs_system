@@ -30,7 +30,7 @@ function readReleasesFromCSV(filePath) {
         if (release_id && request_id && released_by && release_date) {
           const parsed = {
             release_id: Number(release_id),
-            request_id: Number(request_id),
+            request_id: (request_id),
             released_by,
             release_date,
             _id: nedb_id || undefined, // include _id if present

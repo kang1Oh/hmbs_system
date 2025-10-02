@@ -79,95 +79,14 @@ function TransactionPage() {
     verticalAlign: 'middle',
   };
 
-  // //request status fetch
-  // useEffect(() => {
-  //   const fetchRequest = async () => {
-  //     try {
-  //       const storedUser = JSON.parse(localStorage.getItem("user"));
-  //       if (!storedUser) return;
-
-  //       const res = await axios.get("/api/borrow-requests");
-  //       const userRequests = res.data.filter(r => r.user_id === storedUser.user_id);
-
-  //       // only refer to the latest request ID
-  //       if (userRequests.length > 0) {
-  //         const latestRequest = userRequests[userRequests.length - 1];
-  //         setActiveRequest(latestRequest);
-  //         setCurrentStep(latestRequest.status_id);
-
-  //         // decide remarks
-  //         if (latestRequest.status_id === 1) {
-  //           setRemarks("Borrowing request has been submitted for approval.");
-  //         } else if (latestRequest.status_id === 2 || latestRequest.status_id === 6) {
-  //           const approvalsRes = await axios.get("/api/approvals");
-  //           const approval = approvalsRes.data.find(a => a.request_id == latestRequest.request_slip_id);
-  //           setRemarks(approval ? approval.remarks : '');
-  //         } else if (latestRequest.status_id === 3) {
-  //           setRemarks("Your items have been released.");
-  //         } else if (latestRequest.status_id === 4) {
-  //           setRemarks("Your returned items are currently under review.");
-  //         } else if (latestRequest.status_id === 5) {
-  //           setRemarks("All items have been returned in good condition.");
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Error fetching borrow requests:", err);
-  //     }
-  //   };
-
-  //   fetchRequest();
-  // }, []);
-
-  // //active request fetch with items
-  // useEffect(() => {
-  //   const fetchActiveRequest = async () => {
-  //     const storedUser = JSON.parse(localStorage.getItem("user"));
-  //     if (!storedUser) return;
-
-  //     try {
-  //       // 1. get all requests for this user
-  //       const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
-  //       const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
-  //       if (!active) {
-  //         setActiveRequest(null);
-  //         return;
-  //       }
-
-  //       // 2. get all borrow items for this request
-  //       const { data: allItems } = await axios.get(`/api/borrow-items`);
-  //       const requestItems = allItems.filter(i => i.request_id === active._id);
-
-  //       // 3. enrich with tool details
-  //       const enrichedItems = await Promise.all(
-  //         requestItems.map(async (i) => {
-  //           const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
-  //           return {
-  //             ...i,
-  //             name: tool.name,
-  //             unit: tool.unit,
-  //             price: tool.price,
-  //             img: tool.img || itemImage,
-  //           };
-  //         })
-  //       );
-
-  //       setActiveRequest({ ...active, items: enrichedItems || [] });
-  //     } catch (err) {
-  //       console.error("Failed to fetch active request:", err);
-  //     }
-  //   };
-
-  //   fetchActiveRequest();
-  // }, []);
-
+  //active request fetch
   useEffect(() => {
   const fetchActiveRequest = async () => {
     try {
       const storedUser = JSON.parse(localStorage.getItem("user"));
       if (!storedUser) return;
 
-      // get all requests for this user
-      const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+      const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser._id}`);
       const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
 
       if (!active) {
@@ -175,10 +94,8 @@ function TransactionPage() {
         return;
       }
 
-      // set current step BEFORE enriching
       setCurrentStep(Number(active.status_id));
 
-      // set remarks
       if (active.status_id === 1) {
         setRemarks("Borrowing request has been submitted for approval.");
       } else if (active.status_id === 2 || active.status_id === 6) {
@@ -210,7 +127,24 @@ function TransactionPage() {
         })
       );
 
-      setActiveRequest({ ...active, items: enrichedItems || [] });
+      // fetch users + groups
+      const { data: allUsers } = await axios.get(`/api/users`);
+      const { data: groupMembers } = await axios.get(`/api/groups/request/${active._id}`);
+
+      const enrichedGroups = groupMembers.map(gm => {
+        const user = allUsers.find(u => u._id === gm.user_id);
+        return { ...gm, user };
+      });
+
+      // find instructor
+      const instructor = allUsers.find(u => u._id === active.instructor_id);
+
+      setActiveRequest({
+        ...active,
+        items: enrichedItems || [],
+        groupMembers: enrichedGroups || [],
+        instructor: instructor || null,
+      });
 
     } catch (err) {
       console.error("Error fetching active request:", err);
@@ -220,6 +154,7 @@ function TransactionPage() {
   fetchActiveRequest();
 }, []);
 
+
   //transaction history fetch
   useEffect(() => {
     const fetchHistory = async () => {
@@ -227,8 +162,8 @@ function TransactionPage() {
       if (!storedUser) return;
 
       try {
-        // 1. get all requests for this user
-        const { data: requests } = await axios.get(`/api/borrow-requests/user/${storedUser.user_id}`);
+        // 1. get all requests related to this user
+        const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser._id}`);
 
         // 2. only keep completed ones (status_id = 5)
         const completed = requests.filter(r => r.status_id === 5);
@@ -266,10 +201,14 @@ function TransactionPage() {
               return { ...gm, user };
             });
 
-            return { ...req, items: enrichedItems, groupMembers: enrichedGroups };
+            // find instructor 
+            const instructor = allUsers.find(u => u._id === req.instructor_id);
+
+            return { ...req, items: enrichedItems, groupMembers: enrichedGroups, instructor: instructor || null };
           })
         );
 
+        
         setHistoryRequests(enrichedRequests);
       } catch (err) {
         console.error("Failed to fetch transaction history:", err);
@@ -391,7 +330,57 @@ function TransactionPage() {
             </div>
 
             {activeRequest && (
-              <div style={{ border: "1px solid #991F1F", borderRadius: "8px", marginTop: "10px", overflow: "hidden" }}>
+              <div
+                style={{
+                  border: "1px solid #991F1F",
+                  borderRadius: "8px",
+                  marginTop: "10px",
+                  overflow: "hidden",
+                }}
+              >
+                {/* ✅ Request Details */}
+                <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
+                  <div style={{ flex: "1 1 45%" }}>
+                    <p><strong>Date Requested:</strong> {activeRequest.date_requested}</p>
+                    <p><strong>Date Use:</strong> {activeRequest.lab_date}</p>
+                    <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
+                    <p><strong>Subject:</strong> {activeRequest.subject}</p>
+                    <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
+                  </div>
+                  <div style={{ flex: "1 1 45%" }}>
+                    {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
+                      <div style={{ marginTop: "10px" }}>
+                        {(() => {
+                          const leader = activeRequest.groupMembers.find(gm => gm.is_leader);
+                          const members = activeRequest.groupMembers.filter(gm => !gm.is_leader);
+
+                          return (
+                            <>
+                              {leader && (
+                                <p>
+                                  <strong>Group Leader:</strong>{" "}
+                                  {leader.user?.name || "(unknown)"}
+                                </p>
+                              )}
+                              {members.length > 0 && (
+                                <div>
+                                  <p><strong>Group Members:</strong></p>
+                                  <ul style={{ marginLeft: "18px", fontSize: "14px" }}>
+                                    {members.map(m => (
+                                      <li key={m._id}>{m.user?.name || "(unknown)"}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ✅ Items Table */}
                 <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
                   <thead>
                     <tr style={{ backgroundColor: "#991F1F", color: "#fff" }}>
@@ -404,14 +393,18 @@ function TransactionPage() {
                     </tr>
                   </thead>
                   <tbody>
-                  {activeRequest && activeRequest.items && (
-                    activeRequest.items.map((item, index) => (
+                    {activeRequest.items?.map((item, index) => (
                       <tr key={index} style={{ backgroundColor: "#fff" }}>
                         <td style={tableCell}>
                           <img
-                            src={item.img}
+                            src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
                             alt="item"
-                            style={{ width: "44px", height: "44px", objectFit: "cover", borderRadius: "5px" }}
+                            style={{
+                              width: "44px",
+                              height: "44px",
+                              objectFit: "cover",
+                              borderRadius: "5px",
+                            }}
                           />
                         </td>
                         <td style={{ ...tableCell, color: "#333" }}>{item.name}</td>
@@ -434,8 +427,7 @@ function TransactionPage() {
                           </span>
                         </td>
                       </tr>
-                    ))
-                  )}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -497,7 +489,8 @@ function TransactionPage() {
                         <p><strong>Date Requested:</strong> {req.date_requested}</p>
                         <p><strong>Date Use:</strong> {req.lab_date}</p>
                         <p><strong>Time Use:</strong> {req.lab_time}</p>
-                        <p><strong>Course:</strong> {req.course}</p>
+                        <p><strong>Subject:</strong> {req.subject}</p>
+                        <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
                       </div>
                       <div style={{ flex: "1 1 45%" }}>
                         {req.groupMembers && req.groupMembers.length > 0 && (
@@ -548,7 +541,7 @@ function TransactionPage() {
                             <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
                               <td style={{ padding: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
                                 <img
-                                  src={item.img}
+                                  src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
                                   alt="Item"
                                   style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "6px", border: "1px solid #ddd" }}
                                 />

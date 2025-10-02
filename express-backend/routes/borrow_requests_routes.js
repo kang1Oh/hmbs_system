@@ -24,11 +24,14 @@ router.get('/export', (req, res) => {
 
     const fields = [
       'request_slip_id',
-      'course',
+      'subject',
       'date_requested',
       'lab_date',
       'lab_time',
       'status',
+      'instructor_id',
+      'user_id',
+      'status_id',
       '_id'
     ];
     const parser = new Parser({ fields });
@@ -70,6 +73,96 @@ router.get('/user/:user_id', (req, res) => {
     res.json(docs.map(formatRequest));
   });
 });
+
+// GET all requests for a user including group membership
+router.get('/user-or-group/:user_id', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.user_id, 10);
+
+    // direct requests
+    const direct = await new Promise((resolve, reject) => {
+      borrowRequests.find({ user_id: userId }, (err, docs) => {
+        if (err) reject(err);
+        else resolve(docs);
+      });
+    });
+
+    // group memberships
+    const memberships = await new Promise((resolve, reject) => {
+      groups.find({ user_id: userId }, (err, docs) => {
+        if (err) reject(err);
+        else resolve(docs);
+      });
+    });
+
+    let groupRequests = [];
+    if (memberships.length > 0) {
+      const requestIds = memberships.map((m) => m.request_id);
+      groupRequests = await new Promise((resolve, reject) => {
+        borrowRequests.find({ _id: { $in: requestIds } }, (err, docs) => {
+          if (err) reject(err);
+          else resolve(docs);
+        });
+      });
+    }
+
+    const all = [...direct, ...groupRequests];
+    res.json(all.map(formatRequest));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET all requests related to a user (as requester or group member)
+// GET all borrow requests for a user (direct + group membership, focusing on groups first)
+router.get('/by-group-or-user/:user_id', async (req, res) => {
+  try {
+    const userId = req.params.user_id; // careful: group.user_id stores _id (string), borrowRequests.user_id stores numeric
+
+    // 1. Find all group memberships by user_id (string, matches users._id)
+    const memberships = await new Promise((resolve, reject) => {
+      groups.find({ user_id: userId }, (err, docs) => {
+        if (err) reject(err);
+        else resolve(docs);
+      });
+    });
+
+    // 2. Collect request_ids from group memberships
+    const groupRequestIds = memberships.map(m => m.request_id);
+
+    let groupRequests = [];
+    if (groupRequestIds.length > 0) {
+      groupRequests = await new Promise((resolve, reject) => {
+        borrowRequests.find({ _id: { $in: groupRequestIds } }, (err, docs) => {
+          if (err) reject(err);
+          else resolve(docs);
+        });
+      });
+    }
+
+    // 3. Also check if user submitted direct requests (numeric ID)
+    const numericId = parseInt(userId, 10);
+    let directRequests = [];
+    if (!isNaN(numericId)) {
+      directRequests = await new Promise((resolve, reject) => {
+        borrowRequests.find({ user_id: numericId }, (err, docs) => {
+          if (err) reject(err);
+          else resolve(docs);
+        });
+      });
+    }
+
+    // 4. Merge results (avoid duplicates)
+    const allRequests = [...groupRequests, ...directRequests];
+    const unique = Array.from(new Map(allRequests.map(r => [r._id, r])).values());
+
+    res.json(unique.map(formatRequest));
+  } catch (err) {
+    console.error("Error in by-group-or-user route:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 router.post('/', (req, res) => {
   borrowRequests.insert(req.body, (err, newDoc) => {
@@ -118,6 +211,9 @@ router.post('/:id/generate-pdf', async (req, res) => {
         .map((m) => findOneAsync(users, { _id: m.user_id }))
     );
 
+    //Instructor
+    const instructorUser = await findOneAsync(users, { _id: request.instructor_id });
+
     // Request Items
     const reqItems = await findAsync(borrowItems, { request_id: request._id });
     const fullItems = await Promise.all(
@@ -138,7 +234,8 @@ router.post('/:id/generate-pdf', async (req, res) => {
 
     // Request info
     doc.fontSize(12).text(`Slip ID: ${request.request_slip_id}`);
-    doc.text(`Course: ${request.course}`);
+    doc.text(`Subject: ${request.subject}`);
+    doc.text(`Instructor: ${instructorUser ? instructorUser.name : '(Not Found)'}`);
     doc.text(`Date Requested: ${request.date_requested}`);
     doc.text(`Date Use: ${request.lab_date} ${request.lab_time}`);
     doc.moveDown();

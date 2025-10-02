@@ -2,6 +2,7 @@
 const { exportUsersToCSV } = require('../data-load/users_data');
 const { exportToolsToCSV } = require('../data-load/tools_data');
 const { exportReleasesToCSV } = require('../data-load/release_data');
+const { exportReturnsToCSV } = require('../data-load/returns_data');
 const { exportGroupsToCSV } = require('../data-load/groups_data');
 const { exportBorrowRequestsToCSV } = require('../data-load/borrow_requests_data');
 const { exportBorrowItemsToCSV } = require('../data-load/borrow_items_data');
@@ -14,6 +15,7 @@ async function runExportAll() {
     await exportUsersToCSV();
     await exportToolsToCSV();
     await exportReleasesToCSV();
+    await exportReturnsToCSV();
     await exportGroupsToCSV();
     await exportBorrowRequestsToCSV();
     await exportBorrowItemsToCSV();

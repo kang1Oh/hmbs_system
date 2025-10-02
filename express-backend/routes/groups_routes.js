@@ -26,7 +26,6 @@ router.get('/request/:requestId', (req, res) => {
   });
 });
 
-
 router.post('/', (req, res) => {
   groups.insert(req.body, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });

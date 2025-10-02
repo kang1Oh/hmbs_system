@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import tempItemImg from '../assets/images/temp-item-img.png';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
@@ -215,7 +214,7 @@ function CartPage() {
             cart.map(item => (
               <div key={item._id} style={itemBox}>
                 <img 
-                  src={'VITE_API_BASE_URL' in import.meta.env ? `${import.meta.env.VITE_API_BASE_URL}${item.img}` : tempItemImg}
+                  src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
                   alt={item.name} 
                   style={imgStyle} />
                 <div style={itemInfoSection}>

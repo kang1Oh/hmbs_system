@@ -65,6 +65,7 @@ const categoryRoutes = require('./routes/categories_routes');
 const statusRoutes = require('./routes/statuses_routes');
 const groupRoutes = require('./routes/groups_routes');
 const releaseRoutes = require('./routes/release_routes');
+const returnRoutes = require('./routes/returns_routes');
 
 app.use('/api/roles', roleRoutes);
 app.use('/api/users', userRoutes);
@@ -76,6 +77,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/statuses', statusRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/releases', releaseRoutes);
+app.use('/api/returns', returnRoutes);
 
 
 // Start the server

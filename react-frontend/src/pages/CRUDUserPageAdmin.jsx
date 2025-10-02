@@ -164,6 +164,7 @@ const CRUDUserPageAdmin = () => {
       opacity: disabled ? 0.5 : 1,
       cursor: disabled ? 'not-allowed' : 'pointer',
     }),
+    importBtn: { marginTop: '-1.5rem',padding: '7px 25px', background: '#21be6dff', color: 'white', border: '1px solid #21be6dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
     exportButton: { padding: '7px 25px', background: '#15814dff', color: 'white', border: '1px solid #15814dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
     addButton: { backgroundColor: '#991F1F', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Poppins, sans-serif' },
     
@@ -408,7 +409,7 @@ const CRUDUserPageAdmin = () => {
         <div style={styles.groupedSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={styles.sectionTitle}>Students</p>
-            <button style={styles.button} onClick={() => setShowImportCSVModal(true)}>Import CSV File</button>
+            <button style={styles.importBtn} onClick={() => setShowImportCSVModal(true)}>Import CSV File</button>
           </div>
           {renderTable(students, styles.studentTableWrapper, studentPage, setStudentPage, 'Student')}
         </div>

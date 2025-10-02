@@ -178,7 +178,11 @@ router.post('/', upload.single('image'), (req, res) => {
       return res.status(400).json({ error: 'Tool with this ID already exists' });
     }
 
-    const imgPath = req.file ? `/uploads/tools/${req.file.filename}` : "/uploads/tools/default.png";
+    const imgPath = req.file
+      ? `/uploads/tools/${req.file.filename}`
+      : (req.body.img && req.body.img.trim() !== ''
+          ? req.body.img.trim()
+          : "/uploads/tools/default.png");
 
     const newTool = {
       ...req.body,

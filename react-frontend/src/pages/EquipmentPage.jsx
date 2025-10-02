@@ -6,7 +6,6 @@ import ItemCard from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
 
 import equipmentHeaderBg from '../assets/site-images/equipment-header-bg.png';
-import tempItemImg from '../assets/images/temp-item-img.png';
 
 import { FiSearch } from 'react-icons/fi';
 import { FaChevronLeft, FaChevronRight, FaChevronDown } from 'react-icons/fa';
@@ -57,6 +56,11 @@ function EquipmentsPage() {
 
   // Filtering
   const filteredList = tools
+    .filter(item => 
+      item.available_qty > 0 && 
+      item.tool_status === "Available" && 
+      item.disposal_status === "Good Condition"
+    )
     .filter(item => category === "All Products" || categoryMap[item.category_id] === category)
     .filter(item => !type || TYPE_MAP[type]?.includes(Number(item.category_id)))
     .filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
@@ -187,7 +191,7 @@ function EquipmentsPage() {
                   name={<span style={styles.cardName} title={item.name}>{item.name}</span>}
                   qty={item.available_qty}
                   img={item.img}
-                  onClick={() => setSelectedItem({ ...item, image: item.img || tempItemImg, price: item.price})}
+                  onClick={() => setSelectedItem({ ...item, image: item.img, price: item.price})}
                 />
               ))}
             </div>

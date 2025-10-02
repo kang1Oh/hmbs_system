@@ -12,7 +12,8 @@ const db = {
   statuses: new Datastore({ filename: path.join(__dirname, 'statuses.db'), autoload: true }),
   approvals: new Datastore({ filename: path.join(__dirname, 'approvals.db'), autoload: true }),
   groups: new Datastore({ filename: path.join(__dirname, 'groups.db'), autoload: true }),
-  releases: new Datastore({ filename: path.join(__dirname, 'releases.db'), autoload: true })
+  releases: new Datastore({ filename: path.join(__dirname, 'releases.db'), autoload: true }),
+  returns: new Datastore({ filename: path.join(__dirname, 'returns.db'), autoload: true }),
 };
 
 module.exports = db;

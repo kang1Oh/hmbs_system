@@ -29,7 +29,8 @@ function readBorrowRequestsFromCSV(filePath) {
           lab_date,
           date_requested,
           lab_time,
-          course,
+          subject,
+          instructor_id,
           _id, // 👈 pick up NeDB id if present
         } = row;
 
@@ -47,7 +48,8 @@ function readBorrowRequestsFromCSV(filePath) {
             lab_date: lab_date.trim(),
             date_requested: date_requested.trim(),
             lab_time: lab_time ? lab_time.trim() : '',
-            course: course ? course.trim() : '',
+            subject: subject ? subject.trim() : '',
+            instructor_id: instructor_id ? instructor_id.trim() : '',
             _id: _id?.trim() || undefined, // 👈 preserve _id
           };
           console.log('✅ Parsed:', parsed);
@@ -70,13 +72,14 @@ async function testBorrowRequestsAPI() {
     for (const request of requests) {
       try {
         const payload = {
-          user_id: Number(request.user_id),
+          user_id: (request.user_id),
           status_id: Number(request.status_id),
           request_slip_id: Number(request.request_slip_id),
           lab_date: request.lab_date,
           date_requested: request.date_requested,
           lab_time: request.lab_time,
-          course: request.course,
+          subject: request.subject,
+          instructor_id: request.instructor_id
         };
 
         if (request._id) payload._id = request._id; // 👈 reuse NeDB id if exists
@@ -122,7 +125,8 @@ async function exportBorrowRequestsToCSV(data) {
       'lab_date',
       'date_requested',
       'lab_time',
-      'course',
+      'subject',
+      'instructor_id',
       '_id', // ✅ last column, matches DB format
     ];
 
@@ -135,7 +139,8 @@ async function exportBorrowRequestsToCSV(data) {
         lab_date: req.lab_date,
         date_requested: req.date_requested,
         lab_time: req.lab_time || '',
-        course: req.course || '',
+        subject: req.subject || '',
+        instructor_id: req.instructor_id || '',
         _id: req._id || '',
       }))
     );
