@@ -1,19 +1,12 @@
-import React, { useState } from 'react';
-import {FaFileAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaChevronLeft, FaChevronRight, FaFileAlt} from 'react-icons/fa';
 import Sidebar from '../components/Sidebar';
 import { useNavigate } from 'react-router-dom';
-
-const initialRequests = Array(25).fill({
-  requestId: '0000001236',
-  name: 'Juan Dela Cruz',
-  courseId: 'HM 001',
-  requestDate: '06/25/25',
-  status: 'New',
-});
+import axios from 'axios';
 
 const RequestInstructorPage = () => {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState(initialRequests);
+  const [requests, setRequests] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredRowIndex, setHoveredRowIndex] = useState(null);
   const [hoveredPage, setHoveredPage] = useState(null);
@@ -25,14 +18,37 @@ const RequestInstructorPage = () => {
   const requestsToDisplay = requests.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(requests.length / itemsPerPage);
 
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (!storedUser) return;
+
+    const fetchRequests = async () => {
+      try {
+        const { data } = await axios.get(`/api/borrow-requests/instructor/${storedUser._id}/new`);
+        
+        const enriched = data.map((req) => ({
+          requestId: req.request_slip_id,
+          name: req.student_name,
+          subject: req.subject,
+          requestDate: req.date_requested,
+          status: req.status, // "New" or "Approved"
+        }));
+
+        setRequests(enriched);
+      } catch (err) {
+        console.error("Error fetching requests", err);
+      }
+    };
+    
+    fetchRequests();
+  }, []);
+
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
-
   const handleNextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
-
   const handleNavigate = (id) => navigate(`/request-details-instructor/${id}`);
 
   const styles = {
@@ -98,9 +114,8 @@ const RequestInstructorPage = () => {
     newreq: {
       backgroundColor: '#23a6f0',
     },
-    ongoingreq: {
-      backgroundColor: '#f5c518',
-      color: '#000',
+    approvedreq: {
+      backgroundColor: '#f29544ff',
     },
     paginationContainer: {
       display: 'flex',
@@ -175,11 +190,11 @@ const RequestInstructorPage = () => {
           <p style={styles.headerSubtitle}>List of all borrowing requests submitted by students</p>
           <div style={styles.legend}>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#209cee' }}></span> New Request</div>
-            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#f2c744' }}></span> On-going Request</div>
+            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#f29544ff' }}></span> Approved & Forwarded Request</div>
           </div>
         </div>
         <div style={styles.headerRow}>
-          <h3 style={{ fontWeight: '600' }}>3 New Requests</h3>
+          <h3 style={{ fontWeight: '600' }}>{requests.length} New Requests</h3>
           <div style={{ fontSize: '15px', color: '#444', fontWeight: 500 }}>
             Showing {indexOfFirstItem + 1}–{Math.min(indexOfLastItem, requests.length)} out of {requests.length}
           </div>
@@ -191,7 +206,7 @@ const RequestInstructorPage = () => {
               <th style={styles.theadCell}>#</th>
               <th style={styles.theadCell}>Request ID</th>
               <th style={styles.theadCell}>Name</th>
-              <th style={styles.theadCell}>Course ID</th>
+              <th style={styles.theadCell}>Subject</th>
               <th style={styles.theadCell}>Request Date</th>
               <th style={styles.theadCell}>Status</th>
             </tr>
@@ -201,6 +216,11 @@ const RequestInstructorPage = () => {
               const rowIndex = indexOfFirstItem + idx;
               const isHovered = hoveredRowIndex === rowIndex;
 
+              let badgeStyle = styles.newreq;
+              if (req.status === "Approved") {
+                badgeStyle = styles.approvedreq; 
+              }
+
               return (
                 <tr
                   key={rowIndex}
@@ -209,20 +229,20 @@ const RequestInstructorPage = () => {
                   onMouseLeave={() => setHoveredRowIndex(null)}
                   style={{
                     ...styles.rowHover,
-                    backgroundColor: isHovered ? '#ffe6e9' : idx % 2 === 0 ? 'white' : '#f9f9f9',
-                    transition: 'background-color 0.2s ease',
+                    backgroundColor: isHovered ? "#ffe6e9" : idx % 2 === 0 ? "white" : "#f9f9f9",
+                    transition: "background-color 0.2s ease",
                   }}
                 >
                   <td style={styles.thtd}>{rowIndex + 1}</td>
                   <td style={styles.thtd}>{req.requestId}</td>
                   <td style={styles.thtd}>{req.name}</td>
-                  <td style={styles.thtd}>{req.courseId}</td>
+                  <td style={styles.thtd}>{req.subject}</td>
                   <td style={styles.thtd}>{req.requestDate}</td>
                   <td style={styles.thtd}>
                     <span
                       style={{
                         ...styles.statusBadge,
-                        ...(req.status === 'New' ? styles.newreq : styles.ongoingreq),
+                        ...badgeStyle,
                       }}
                     >
                       {req.status}

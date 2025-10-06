@@ -5,7 +5,7 @@ const path = require('path');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const router = express.Router();
-const { borrowRequests, groups, borrowItems, users, tools } = require('../models/db');
+const { borrowRequests, groups, borrowItems, users, tools, approvals } = require('../models/db');
 const { findAsync, findOneAsync } = require('../helpers/dbAsync');
 
 // 🧹 Helper: normalize response with nedb_id included
@@ -17,39 +17,6 @@ function formatRequest(doc) {
   };
 }
 
-// 📤 EXPORT current DB to CSV into /csv_exports
-router.get('/export', (req, res) => {
-  borrowRequests.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-
-    const fields = [
-      'request_slip_id',
-      'subject',
-      'date_requested',
-      'lab_date',
-      'lab_time',
-      'status',
-      'instructor_id',
-      'user_id',
-      'status_id',
-      '_id'
-    ];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
-
-    const csvPath = path.join(__dirname, '..', 'csv_exports', 'borrow_requests.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      console.error('⚠️ Failed to write export CSV:', e.message);
-    }
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('borrow_requests.csv');
-    res.send(csv);
-  });
-});
-
 router.get('/', (req, res) => {
   borrowRequests.find({}, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
@@ -57,67 +24,19 @@ router.get('/', (req, res) => {
   });
 });
 
-router.get('/:id', (req, res) => {
-  borrowRequests.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Request not found' });
-    res.json(formatRequest(doc));
-  });
-});
-
 // GET all requests for a specific user
 router.get('/user/:user_id', (req, res) => {
-  const userId = parseInt(req.params.user_id, 10); // since you’re storing numeric IDs
+  const userId = parseInt(req.params.user_id);
   borrowRequests.find({ user_id: userId }, (err, docs) => {
     if (err) return res.status(500).json({ error: err });
     res.json(docs.map(formatRequest));
   });
 });
 
-// GET all requests for a user including group membership
-router.get('/user-or-group/:user_id', async (req, res) => {
-  try {
-    const userId = parseInt(req.params.user_id, 10);
-
-    // direct requests
-    const direct = await new Promise((resolve, reject) => {
-      borrowRequests.find({ user_id: userId }, (err, docs) => {
-        if (err) reject(err);
-        else resolve(docs);
-      });
-    });
-
-    // group memberships
-    const memberships = await new Promise((resolve, reject) => {
-      groups.find({ user_id: userId }, (err, docs) => {
-        if (err) reject(err);
-        else resolve(docs);
-      });
-    });
-
-    let groupRequests = [];
-    if (memberships.length > 0) {
-      const requestIds = memberships.map((m) => m.request_id);
-      groupRequests = await new Promise((resolve, reject) => {
-        borrowRequests.find({ _id: { $in: requestIds } }, (err, docs) => {
-          if (err) reject(err);
-          else resolve(docs);
-        });
-      });
-    }
-
-    const all = [...direct, ...groupRequests];
-    res.json(all.map(formatRequest));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET all requests related to a user (as requester or group member)
 // GET all borrow requests for a user (direct + group membership, focusing on groups first)
 router.get('/by-group-or-user/:user_id', async (req, res) => {
   try {
-    const userId = req.params.user_id; // careful: group.user_id stores _id (string), borrowRequests.user_id stores numeric
+    const userId = req.params.user_id; 
 
     // 1. Find all group memberships by user_id (string, matches users._id)
     const memberships = await new Promise((resolve, reject) => {
@@ -163,11 +82,207 @@ router.get('/by-group-or-user/:user_id', async (req, res) => {
   }
 });
 
+// GET new requests for a specific instructor
+router.get('/instructor/:instructor_id/new', async (req, res) => {
+  const instructorId = req.params.instructor_id;
+
+  try {
+    const requests = await new Promise((resolve, reject) => {
+      borrowRequests.find({ instructor_id: instructorId, status_id: 1 }, (err, docs) => {
+        if (err) reject(err);
+        else resolve(docs);
+      });
+    });
+
+    const enriched = await Promise.all(
+      requests.map(async (req) => {
+        const approval = await new Promise((resolve) => {
+          approvals.findOne(
+            { request_id: req._id, user_id: instructorId, status_id: 2 },
+            (err, doc) => resolve(doc || null)
+          );
+        });
+
+        // get student name
+        const student = await new Promise((resolve) => {
+          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
+        });
+
+        return {
+          ...formatRequest(req),
+          student_name: student ? student.name : "Unknown",
+          status: approval ? "Approved" : "New",
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error("Error in instructor route:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/programhead/new', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store'); // avoid 304 caching
+
+    // Step 1: find requests approved by an instructor
+    const instructorApproved = await new Promise((resolve, reject) => {
+      approvals.find(
+        { role_id: { $in: [2, "2"] }, status_id: { $in: [2, "2"] } },
+        (err, docs) => {
+          if (err) reject(err);
+          else resolve(docs.map((d) => d.request_id));
+        }
+      );
+    });
+
+    // Step 2: find matching borrow requests that are still pending
+    const requests = await new Promise((resolve, reject) => {
+      borrowRequests.find(
+        { _id: { $in: instructorApproved }, status_id: { $in: [1, "1"] } },
+        (err, docs) => {
+          if (err) reject(err);
+          else resolve(docs);
+        }
+      );
+    });
+
+    // Step 3: enrich with student name + program head approval status
+    const enriched = await Promise.all(
+      requests.map(async (req) => {
+        const progApproved = await new Promise((resolve) => {
+          approvals.findOne(
+            { request_id: req._id, role_id: { $in: [3, "3"] }, status_id: { $in: [2, "2"] } },
+            (err, doc) => resolve(doc || null)
+          );
+        });
+
+        const student = await new Promise((resolve) => {
+          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
+        });
+
+        return {
+          request_slip_id: req.request_slip_id,
+          student_name: student ? student.name : "Unknown",
+          subject: req.subject,
+          date_requested: req.date_requested,
+          status: progApproved ? "Approved" : "New",
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error("Error fetching program head requests:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ GET requests for Admin
+router.get('/for-admin', async (req, res) => {
+  try {
+    const [borrowDocs, approvalDocs] = await Promise.all([
+      new Promise((resolve, reject) =>
+        borrowRequests.find({}, (err, docs) => (err ? reject(err) : resolve(docs)))
+      ),
+      new Promise((resolve, reject) =>
+        approvals.find({}, (err, docs) => (err ? reject(err) : resolve(docs)))
+      ),
+    ]);
+
+    const instructorApproved = new Set(
+      approvalDocs
+        .filter(a => a.role_id == 2 && a.status_id == 2)
+        .map(a => a.request_id)
+    );
+    const progHeadApproved = new Set(
+      approvalDocs
+        .filter(a => a.role_id == 3 && a.status_id == 2)
+        .map(a => a.request_id)
+    );
+    const adminApproved = new Set(
+      approvalDocs
+        .filter(a => a.role_id == 1 && a.status_id == 2)
+        .map(a => a.request_id)
+    );
+
+    const filtered = borrowDocs.filter(req =>
+      instructorApproved.has(req._id) && progHeadApproved.has(req._id) && req.status_id !== 5
+    );
+
+    const enriched = await Promise.all(
+      filtered.map(async (req) => {
+        const student = await new Promise((resolve) =>
+          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null))
+        );
+
+        let status = 'New';
+        if (req.status_id === 6) status = 'Declined';
+        else if (adminApproved.has(req._id)) status = 'Approved';
+        else if ([2, 3, 4].includes(req.status_id)) status = 'On-Going';
+
+        return {
+          request_slip_id: req.request_slip_id,
+          student_name: student ? student.name : 'Unknown',
+          subject: req.subject,
+          date_requested: req.date_requested,
+          status,
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Error in /for-admin route:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+
+// ✅ GET completed requests for Admin
+router.get('/completed', async (req, res) => {
+  try {
+    const borrowDocs = await new Promise((resolve, reject) =>
+      borrowRequests.find({ status_id: 5 }, (err, docs) => (err ? reject(err) : resolve(docs)))
+    );
+
+    const enriched = await Promise.all(
+      borrowDocs.map(async (req) => {
+        const student = await new Promise((resolve) =>
+          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null))
+        );
+
+        return {
+          request_slip_id: req.request_slip_id,
+          student_name: student ? student.name : 'Unknown',
+          subject: req.subject,
+          date_requested: req.date_requested,
+          status: 'Completed',
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Error in /completed route:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+
 
 router.post('/', (req, res) => {
   borrowRequests.insert(req.body, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });
     res.status(201).json(formatRequest(newDoc));
+  });
+});
+
+router.get('/:id', (req, res) => {
+  borrowRequests.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Request not found' });
+    res.json(formatRequest(doc));
   });
 });
 

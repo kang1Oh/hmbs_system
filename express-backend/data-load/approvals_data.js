@@ -36,7 +36,7 @@ function readApprovalsFromCSV(filePath) {
             user_id,
             name,
             role_id,
-            status_id,
+            status_id: Number(status_id),
             remarks,
             date_approved,
             _id: nedb_id || undefined, // keep nedb_id if exists
@@ -76,7 +76,7 @@ async function exportApprovalsToCSV() {
         user_id: a.user_id,
         name: a.name,
         role_id: a.role_id,
-        status_id: a.status_id,
+        status_id: Number(a.status_id),
         remarks: a.remarks,
         date_approved: a.date_approved,
         nedb_id: a._id || '',
