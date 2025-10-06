@@ -10,14 +10,6 @@ router.get('/', (req, res) => {
   });
 });
 
-router.get('/:id', (req, res) => {
-  statuses.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Status not found' });
-    res.json(doc);
-  });
-});
-
 router.post('/', (req, res) => {
   const { status_label } = req.body;
   if (!status_label) return res.status(400).json({ error: 'status_label is required' });
@@ -25,6 +17,14 @@ router.post('/', (req, res) => {
   statuses.insert({ status_label }, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });
     res.status(201).json(newDoc);
+  });
+});
+
+router.get('/:id', (req, res) => {
+  statuses.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Status not found' });
+    res.json(doc);
   });
 });
 

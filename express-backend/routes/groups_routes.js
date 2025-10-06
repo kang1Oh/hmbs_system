@@ -10,14 +10,6 @@ router.get('/', (req, res) => {
   });
 });
 
-router.get('/:id', (req, res) => {
-  groups.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Group not found' });
-    res.json(doc);
-  });
-});
-
 // GET all group members for a given request_id
 router.get('/request/:requestId', (req, res) => {
   groups.find({ request_id: req.params.requestId }, (err, docs) => {
@@ -30,6 +22,14 @@ router.post('/', (req, res) => {
   groups.insert(req.body, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });
     res.status(201).json(newDoc);
+  });
+});
+
+router.get('/:id', (req, res) => {
+  groups.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Group not found' });
+    res.json(doc);
   });
 });
 

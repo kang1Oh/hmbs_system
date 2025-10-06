@@ -22,15 +22,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// GET category by MongoDB _id
-router.get('/:id', (req, res) => {
-  categories.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Category not found' });
-    res.json(doc);
-  });
-});
-
 // POST create new category
 router.post('/', (req, res) => {
   const { category_id, category_name } = req.body;
@@ -51,6 +42,15 @@ router.post('/', (req, res) => {
   categories.insert({ category_id, category_name }, (err, newDoc) => {
     if (err) return res.status(500).json({ error: err });
     res.status(201).json(newDoc);
+  });
+});
+
+// GET category by MongoDB _id
+router.get('/:id', (req, res) => {
+  categories.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Category not found' });
+    res.json(doc);
   });
 });
 

@@ -176,16 +176,6 @@ router.get('/with-passwords', (req, res) => {
   });
 });
 
-// GET a user by numeric user_id or _id
-router.get('/:id', (req, res) => {
-  findUserById(req.params.id, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'User not found' });
-    const { password, ...safeDoc } = doc;
-    res.json(safeDoc);
-  });
-});
-
 // SEARCH by name + role
 router.get('/search/:role/:name', (req, res) => {
   const { role, name } = req.params;
@@ -269,6 +259,16 @@ router.post('/logout', (req, res) => {
     res.clearCookie('hmbs.sid');
     if (err) return res.status(500).json({ success: false, message: 'Logout failed' });
     res.json({ success: true });
+  });
+});
+
+// GET a user by numeric user_id or _id
+router.get('/:id', (req, res) => {
+  findUserById(req.params.id, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'User not found' });
+    const { password, ...safeDoc } = doc;
+    res.json(safeDoc);
   });
 });
 

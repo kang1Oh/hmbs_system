@@ -11,20 +11,20 @@ router.get('/', (req, res) => {
   });
 });
 
+// Create
+router.post('/', (req, res) => {
+  returns.insert(req.body, (err, newDoc) => {
+    if (err) return res.status(500).json({ error: err });
+    res.status(201).json(newDoc);
+  });
+});
+
 // Get one
 router.get('/:id', (req, res) => {
   returns.findOne({ _id: req.params.id }, (err, doc) => {
     if (err) return res.status(500).json({ error: err });
     if (!doc) return res.status(404).json({ message: 'Return not found' });
     res.json(doc);
-  });
-});
-
-// Create
-router.post('/', (req, res) => {
-  returns.insert(req.body, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(newDoc);
   });
 });
 

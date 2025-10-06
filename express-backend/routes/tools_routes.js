@@ -146,24 +146,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ GET tool by numeric tool_id
-router.get('/numeric/:tool_id', (req, res) => {
-  tools.findOne({ tool_id: req.params.tool_id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Tool not found' });
-    res.json(doc);
-  });
-});
-
-// ✅ GET tool by NeDB _id
-router.get('/:id', (req, res) => {
-  tools.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Tool not found' });
-    res.json(doc);
-  });
-});
-
 // ✅ CREATE tool
 router.post('/', upload.single('image'), (req, res) => {
   const { tool_id } = req.body;
@@ -198,6 +180,23 @@ router.post('/', upload.single('image'), (req, res) => {
   });
 });
 
+// ✅ GET tool by numeric tool_id
+router.get('/numeric/:tool_id', (req, res) => {
+  tools.findOne({ tool_id: req.params.tool_id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Tool not found' });
+    res.json(doc);
+  });
+});
+
+// ✅ GET tool by NeDB _id
+router.get('/:id', (req, res) => {
+  tools.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err });
+    if (!doc) return res.status(404).json({ message: 'Tool not found' });
+    res.json(doc);
+  });
+});
 
 // ✅ UPDATE tool (by _id)
 router.put('/:id', upload.single('image'), (req, res) => {

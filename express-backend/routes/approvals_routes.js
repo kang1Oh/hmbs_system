@@ -41,18 +41,18 @@ router.get('/', (req, res) => {
   });
 });
 
+router.post('/', (req, res) => {
+  approvals.insert(req.body, (err, newDoc) => {
+    if (err) return res.status(500).json({ error: err });
+    res.status(201).json(newDoc);
+  });
+});
+
 router.get('/:id', (req, res) => {
   approvals.findOne({ _id: req.params.id }, (err, doc) => {
     if (err) return res.status(500).json({ error: err });
     if (!doc) return res.status(404).json({ message: 'Approval not found' });
     res.json(doc);
-  });
-});
-
-router.post('/', (req, res) => {
-  approvals.insert(req.body, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(newDoc);
   });
 });
 

@@ -9,7 +9,7 @@
 {"user_id":4,"role_id":3,"email":"programhead1@hmbs.com","password":"staff301","name":"Michael Johnson","active":true,"createdAt":{"$$date":1759586020389},"_id":"PvX7jaAiPQQojIwR"}
 {"user_id":20,"role_id":4,"email":"erlang@hmbs.com","password":"student413","name":"Yang Jian","active":true,"createdAt":{"$$date":1759586020605},"_id":"QrKq0qB9iXfSNFA5"}
 {"user_id":14,"role_id":4,"email":"hanlinstar@hmbs.com","password":"student409","name":"Fang Ziyu","active":true,"createdAt":{"$$date":1759586020538},"_id":"R8c5Dw2fHWfUwKzQ"}
-{"user_id":18,"role_id":1,"email":"sweetdoctor@hmbs.com","password":"admin098","name":"Cam O'mile","active":true,"createdAt":{"$$date":1759586020583},"_id":"TNrGTopBXMfAuYFS"}
+{"user_id":18,"role_id":1,"email":"sweetdoctor@hmbs.com","password":"admin098","name":"Cam O'mile","active":false,"createdAt":{"$$date":1759586020583},"_id":"TNrGTopBXMfAuYFS"}
 {"user_id":21,"role_id":4,"email":"dragonprince@hmbs.com","password":"student414","name":"Ao Bing","active":true,"createdAt":{"$$date":1759586020617},"_id":"TWEfc4vfXud8TLG6"}
 {"user_id":24,"role_id":2,"email":"foxdad@hmbs.com","password":"staff204","name":"Huai Jin","active":true,"createdAt":{"$$date":1759586020651},"_id":"VylEEwiyHOHNrRrR"}
 {"user_id":23,"role_id":2,"email":"minifoxpainter@hmbs.com","password":"staff203","name":"Ling Yuan","active":true,"createdAt":{"$$date":1759586020640},"_id":"ZPV9z9d1IYgQFpUI"}
@@ -25,4 +25,3 @@
 {"user_id":13,"role_id":4,"email":"mrchancellor@hmbs.com","password":"student408","name":"Han Yue","active":true,"createdAt":{"$$date":1759586020526},"_id":"vOK301pGSHGZJiTT"}
 {"user_id":1,"role_id":1,"email":"admin@hmbs.com","password":"admin123","name":"John Smith","active":true,"createdAt":{"$$date":1759586020334},"_id":"yn8TADS2Q9Z3yCsq"}
 {"user_id":10,"role_id":4,"email":"student5@hmbs.com","password":"student405","name":"James Taylor","active":true,"createdAt":{"$$date":1759586020475},"_id":"zMb6qBmlxj8DX3my"}
-{"user_id":18,"role_id":1,"email":"sweetdoctor@hmbs.com","password":"admin098","name":"Cam O'mile","active":false,"createdAt":{"$$date":1759586020583},"_id":"TNrGTopBXMfAuYFS"}

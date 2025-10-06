@@ -16,15 +16,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// GET role by ID
-router.get('/:id', (req, res) => {
-  roles.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-    if (!doc) return res.status(404).json({ message: 'Role not found' });
-    res.json(doc);
-  });
-});
-
 // CREATE a new role
 router.post('/', (req, res) => {
   const { id, name } = req.body;
@@ -44,6 +35,15 @@ router.post('/', (req, res) => {
       id: newDoc.id,
       name: newDoc.name
     });
+  });
+});
+
+// GET role by ID
+router.get('/:id', (req, res) => {
+  roles.findOne({ _id: req.params.id }, (err, doc) => {
+    if (err) return res.status(500).json({ error: err.message || err });
+    if (!doc) return res.status(404).json({ message: 'Role not found' });
+    res.json(doc);
   });
 });
 
