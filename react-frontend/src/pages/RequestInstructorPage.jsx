@@ -31,7 +31,8 @@ const RequestInstructorPage = () => {
           name: req.student_name,
           subject: req.subject,
           requestDate: req.date_requested,
-          status: req.status, // "New" or "Approved"
+          status: req.status, 
+          _id: req._id, 
         }));
 
         setRequests(enriched);
@@ -117,6 +118,9 @@ const RequestInstructorPage = () => {
     approvedreq: {
       backgroundColor: '#f29544ff',
     },
+    deniedreq: {
+      backgroundColor: '#DC2626',
+    },
     paginationContainer: {
       display: 'flex',
       justifyContent: 'center',
@@ -189,8 +193,9 @@ const RequestInstructorPage = () => {
           <h2 style={styles.headerTitle}>Lists of Requests</h2>
           <p style={styles.headerSubtitle}>List of all borrowing requests submitted by students</p>
           <div style={styles.legend}>
-            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#209cee' }}></span> New Request</div>
+            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#2D9CDB' }}></span> New Request</div>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#f29544ff' }}></span> Approved & Forwarded Request</div>
+            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#DC2626' }}></span> Denied Request</div>
           </div>
         </div>
         <div style={styles.headerRow}>
@@ -219,12 +224,14 @@ const RequestInstructorPage = () => {
               let badgeStyle = styles.newreq;
               if (req.status === "Approved") {
                 badgeStyle = styles.approvedreq; 
+              }else if (req.status === "Denied") {
+                badgeStyle = styles.deniedreq; 
               }
 
               return (
                 <tr
                   key={rowIndex}
-                  onClick={() => handleNavigate(req.requestId)}
+                  onClick={() => handleNavigate(req._id)}
                   onMouseEnter={() => setHoveredRowIndex(rowIndex)}
                   onMouseLeave={() => setHoveredRowIndex(null)}
                   style={{

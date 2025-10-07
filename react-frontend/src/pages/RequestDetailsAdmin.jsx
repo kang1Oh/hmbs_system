@@ -1,142 +1,220 @@
-import React, { useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import { FaFileAlt, FaBoxOpen, FaClipboardList } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
-import SpoonImage from '../assets/images/spoon.png';
+import Sidebar from '../components/Sidebar';
 import RejectRequestModal from '../components/RejectRequestModal.jsx';
 import DeniedRequestModal from '../components/DeniedRequestModal.jsx';
-
+import ApprovedRequestModal from '../components/ApprovedRequestModal.jsx';
 
 const RequestDetailsAdmin = () => {
   const navigate = useNavigate();
-  const [requestId, setRequestId] = useState('000001234'); // Example request ID
-  const borrowedItems = [1, 2, 3];
-  const groupMembers = [1, 2, 3];
+  const { id } = useParams(); 
+
+  const [request, setRequest] = useState(null);
+  const [instructor, setInstructor] = useState(null);
+  const [programhead, setProgramHead] = useState(null);
+  const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [approvalExists, setApprovalExists] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(null); 
+  const [requestStatus, setRequestStatus] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showDeniedModal, setShowDeniedModal] = useState(false);
+  const [showApprovedModal, setShowApprovedModal] = useState(false);
 
-  const handleNavigate = (id) => navigate(`/request-approved-admin/${id}`);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 1. Get the borrow request
+        const { data: reqData } = await axios.get(`/api/borrow-requests/${id}`);
+        setRequest(reqData);
+        setRequestStatus(reqData.status_id);
+
+        // 2. Fetch instructor info
+        const { data: instructor } = await axios.get(`/api/users/${reqData.instructor_id}`);
+        setInstructor(instructor);
+
+        // 3. Fetch program head info (via approval entry)
+        const { data: allApprovals } = await axios.get('/api/approvals');
+        const progHeadApproval = allApprovals.find(
+          (a) =>
+            String(a.request_id) === String(reqData._id) &&
+            (a.role_id === 3 || a.role_id === "3")
+        );
+
+        if (progHeadApproval) {
+          const { data: progHead } = await axios.get(`/api/users/${progHeadApproval.user_id}`);
+          setProgramHead(progHead);
+        } else {
+          setProgramHead(null);
+        }
+
+        // 4. Get borrow items and enrich with tool data
+        const { data: allItems } = await axios.get('/api/borrow-items');
+        const requestItems = allItems.filter((i) => i.request_id === reqData._id);
+
+        const enrichedItems = await Promise.all(
+          requestItems.map(async (i) => {
+            const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+            return {
+              ...i,
+              name: tool.name,
+              quantity: i.requested_qty,
+              unit: tool.unit,
+              price: tool.price,
+              img: tool.img,
+            };
+          })
+        );
+        setItems(enrichedItems);
+
+        // 5. Get group members and enrich with user info
+        const { data: group } = await axios.get(`/api/groups/request/${reqData._id}`);
+        const enrichedMembers = await Promise.all(
+          group.map(async (gm) => {
+            const { data: user } = await axios.get(`/api/users/${gm.user_id}`);
+            return { ...gm, user };
+          })
+        );
+
+        const leader = enrichedMembers.find(
+          (m) => m.is_leader === "yes" || m.is_leader === true
+        );
+        const members = enrichedMembers.filter(
+          (m) => !(m.is_leader === "yes" || m.is_leader === true)
+        );
+
+        setMembers({ leader, others: members });
+
+        // 6. Check admin's approval (if already acted)
+        const currentUser = JSON.parse(localStorage.getItem("user") || "null") || {};
+        const reqId = reqData._id;
+
+        const adminApproval = allApprovals.find(
+          (a) =>
+            String(a.request_id) === String(reqId) &&
+            String(a.user_id) === String(currentUser._id) &&
+            (a.status_id === 2 || a.status_id === 6)
+        );
+
+        setApprovalExists(Boolean(adminApproval));
+        setApprovalStatus(adminApproval ? adminApproval.status_id : null);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  // Admin approval handler
+  const handleApprove = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      
+      // Step 1: record approval in approvals collection
+      const approvalPayload = {
+        request_id: request._id,
+        user_id: currentUser._id,
+        name: currentUser.name || 'Admin',
+        role_id: 1,
+        status_id: 2, // Approved
+        remarks: 'Approved by admin',
+        date_approved: new Date().toISOString(),
+      };
+      await axios.post('/api/approvals', approvalPayload);
+
+      // Step 2: update borrow request's overall status to Approved (2)
+      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 2 });
+
+      // Step 3: update UI state
+      setApprovalExists(true);
+      setApprovalStatus(2);
+      setShowApprovedModal(true);
+
+      // Step 4: refresh data
+      fetchData();
+    } catch (err) {
+      console.error('Admin approve failed:', err);
+    }
+  };
+
+  // Admin rejection handler
+  const handleReject = async (reason) => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      
+      // Step 1: record rejection in approvals collection
+      const rejectionPayload = {
+        request_id: request._id,
+        user_id: currentUser._id,
+        name: currentUser.name || 'Admin',
+        role_id: 1, 
+        status_id: 6,
+        remarks: reason,
+        date_approved: new Date().toISOString(),
+      };
+      await axios.post('/api/approvals', rejectionPayload);
+
+      // Step 2: update borrow request's overall status to Denied (6)
+      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 6 });
+
+      // Step 3: update UI state
+      setApprovalExists(true);
+      setApprovalStatus(6);
+      setShowRejectModal(false);
+      setShowDeniedModal(true);
+
+      // Step 4: refresh data
+      fetchData();
+    } catch (err) {
+      console.error('Admin reject failed:', err);
+    }
+  };
+
+  if (!request) return <div>Loading...</div>;
+
+  const formatDate = (d) => {
+    const date = new Date(d);
+    return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+  };
 
   const styles = {
-    layout: {
-      display: 'flex',
-      minHeight: '100vh',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    main: {
-      marginLeft: '240px',
-      flex: 1,
-      backgroundColor: '#ffffff',
-      padding: '2rem',
-    },
-    topHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '0.2rem',
-      fontSize: '14px',
-    },
-    goBackBtn: {
-      background: 'none',
-      border: 'none',
-      color: '#8A1F2B',
-      textDecoration: 'underline',
-      cursor: 'pointer',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '17px',
-      fontWeight: 600,
-    },
-    status: {
-      backgroundColor: '#23a6f0',
-      color: 'white',
-      padding: '0.2rem 0.7rem',
-      borderRadius: '1rem',
-      fontSize: '15px',
-      marginLeft: '0.2rem',
-    },
-    formGroup: {
-      marginBottom: '1.4rem',
-    },
-    label: {
-      display: 'block',
-      marginBottom: '0.2rem',
-      fontWeight: 600,
-    },
-    input: {
-      width: '100%',
-      padding: '0.8rem',
-      borderRadius: '7px',
-      border: '0.5px solid #1A1A1A',
-      fontSize: '0.9rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'separate',
-      borderSpacing: 0,
-      marginTop: '0.5rem',
-      backgroundColor: 'white',
-      borderRadius: '10px',
-      border: '1px solid #8A1F2B',
-    },
-    th: {
-      backgroundColor: '#8A1F2B',
-      color: 'white',
-      padding: '1rem',
-      textAlign: 'center',
-    },
-    td: {
-      padding: '1rem',
-      textAlign: 'center',
-      borderBottom: '1px solid #ddd',
-    },
-    actionButtons: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      marginTop: '2rem',
-      gap: '0.5rem',
-    },
-    itemCountContainer: {
-      fontWeight: '600',
-      fontSize: '18px',
-    },
+    layout:{display:'flex',minHeight:'100vh',fontFamily:'Poppins, sans-serif'},
+    main:{marginLeft:'240px',flex:1,padding:'2rem'},
+    formGroup:{marginBottom:'1.5rem'},
+    label:{display:'block',marginBottom:'0.2rem',fontWeight:600},
+    input:{width:'100%',padding:'14px',borderRadius:'7px',border:'1px solid black',fontSize:'15px',fontFamily:'Poppins, sans-serif'},
+    table:{width:'100%',borderCollapse:'separate',borderSpacing:0,marginTop:'0.5rem',backgroundColor:'white',borderRadius:'10px',border:'1px solid #8A1F2B',fontFamily:'Poppins, sans-serif'},
+    th:{backgroundColor:'#8A1F2B',color:'white',padding:'1rem',textAlign:'center',fontWeight:600},
+    td:{padding:'1rem',textAlign:'center',borderBottom:'1px solid #ddd'},
+    actionButtons:{display:'flex',justifyContent:'flex-end',marginTop:'2rem',gap:'0.5rem',fontFamily:'Poppins, sans-serif'},
+    itemCountContainer:{fontWeight:600,fontSize:'18px'},
+    approveButton:{backgroundColor:'#8A1F2B',color:'white',border:'none',padding:'0.75rem 1.5rem',borderRadius:'99px',cursor:'pointer',fontFamily:'Poppins, sans-serif',fontSize:'14px'},
+    rejectButton:{backgroundColor:'#fff',color:'#8A1F2B',border:'1px solid #8A1F2B',padding:'0.75rem 1.5rem',borderRadius:'99px',cursor:'pointer',fontFamily:'Poppins, sans-serif',fontSize:'14px'},
+    goBackBtn:{background:'none',border:'none',color:'#8A1F2B',textDecoration:'underline',cursor:'pointer',fontFamily:'Poppins, sans-serif',fontSize:'17px',fontWeight:600},
+    topHeader:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.2rem',fontSize:'14px'},
+    hr:{border:'none',borderTop:'2px solid rgba(97,97,97,0.3)',marginTop:'1rem',marginBottom:'-0.6rem'},
+    flexRow:{display:'flex',gap:'2rem',marginTop:'2rem',flexWrap:'wrap'},
+    newreq: {backgroundColor: '#2D9CDB',color:'white',padding:'0.2rem 1rem',borderRadius:'1rem',fontSize:'15px',marginLeft:'0.2rem'},
+    approvedreq: {backgroundColor: '#F2C94C',color:'white',padding:'0.2rem 1rem',borderRadius:'1rem',fontSize:'15px',marginLeft:'0.2rem'},
+    deniedreq: {backgroundColor: '#DC2626',color:'white',padding:'0.2rem 1rem',borderRadius:'1rem',fontSize:'15px',marginLeft:'0.2rem'},
+    completedreq: {backgroundColor: '#27AE60',color:'white',padding:'0.2rem 1rem',borderRadius:'1rem',fontSize:'15px',marginLeft:'0.2rem'},
+    itemImage:{borderRadius:'8px',width:'50px',height:'50px',objectFit:'cover'},
+    sectionHeader:{margin:0,fontWeight:600,fontSize:'20px'},
+    membersHeader:{marginTop:'2rem',marginBottom:'0.5rem',fontWeight:600},
   };
 
   return (
     <div style={styles.layout}>
-      {/* Button CSS classes with hover effects */}
-      <style>{`
-        .approveButton {
-          background-color: #8A1F2B;
-          color: white;
-          border: none;
-          padding: 10px 22px;
-          border-radius: 999px;
-          cursor: pointer;
-          font-family: Poppins, sans-serif;
-          font-size: 14px;
-          transition: background-color 0.3s ease;
-        }
-        .approveButton:hover {
-          background-color: #6b1620;
-        }
-        .rejectButton {
-          background-color: white;
-          color: #8A1F2B;
-          border: 1px solid #8A1F2B;
-          padding: 10px 25px;
-          border-radius: 999px;
-          cursor: pointer;
-          font-family: Poppins, sans-serif;
-          font-size: 14px;
-          transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        .rejectButton:hover {
-          background-color: #8A1F2B;
-          color: white;
-          border-color: #8A1F2B;
-        }
-      `}</style>
+      <style>
+        {`
+          .approve-btn:hover { background-color: #a32c3a !important; }
+          .reject-btn:hover { background-color: #8A1F2B !important; color: white !important; }
+          .go-back-btn:hover { text-decoration: none !important; opacity: 0.8; }
+        `}
+      </style>
 
       <Sidebar
         activePage="requests"
@@ -151,79 +229,108 @@ const RequestDetailsAdmin = () => {
 
       <main style={styles.main}>
         <div style={styles.topHeader}>
-          <h1>Request No. 000001234</h1>
-          <button style={styles.goBackBtn} onClick={() => navigate('/requests-admin')}>Go Back</button>
+          <div>
+            <h1>Request No. {request.request_slip_id}</h1>
+            <p style={{ fontSize: '16px' }}>
+              Status:{' '}
+              <span
+                style={
+                  requestStatus === 5
+                    ? styles.completedreq
+                    : approvalStatus === 2
+                    ? styles.approvedreq
+                    : approvalStatus === 6
+                    ? styles.deniedreq
+                    : styles.newreq
+                }
+              >
+                {requestStatus === 5
+                  ? 'Completed'
+                  : approvalStatus === 2
+                  ? 'Approved'
+                  : approvalStatus === 6
+                  ? 'Denied'
+                  : 'New Request'}
+              </span>
+            </p>
+          </div>
+          <button className="go-back-btn" style={styles.goBackBtn} onClick={() => navigate('/requests-admin')}>Go Back</button>
         </div>
 
-        <p style={{ fontSize: '16px' }}>
-          Status: <span style={styles.status}>New Request</span>
-        </p>
+        <hr style={styles.hr} />
 
-        <hr style={{
-          border: 'none',
-          borderTop: '2px solid rgba(97, 97, 97, 0.3)',
-          marginTop: '1rem',
-          marginBottom: '-0.6rem'
-        }} />
-
-
-        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
+        <div style={styles.flexRow}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
             <label style={styles.label}>Date Requested</label>
-            <input type="text" value="July 02, 2025" style={styles.input} readOnly />
+            <input type="text" value={formatDate(request.date_requested)} style={styles.input} readOnly />
           </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
             <label style={styles.label}>Date Use</label>
-            <input type="text" value="July 08, 2025" style={styles.input} readOnly />
+            <input type="text" value={formatDate(request.lab_date)} style={styles.input} readOnly />
           </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
             <label style={styles.label}>Time</label>
-            <input type="text" value="8:00 AM" style={styles.input} readOnly />
+            <input type="text" value={request.lab_time} style={styles.input} readOnly />
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
+        <div style={{ ...styles.flexRow, marginTop: '1rem' }}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
             <label style={styles.label}>Group Leader</label>
-            <input type="text" value="Student 1" style={styles.input} readOnly />
+            <input
+              type="text"
+              value={
+                members.leader
+                  ? `${members.leader.user?.name} (${members.leader.user?.email})`
+                  : 'N/A'
+              }
+              style={styles.input}
+              readOnly
+            />
           </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Course</label>
-            <input type="text" value="HM 001" style={styles.input} readOnly />
+          <div style={{ flex: 1, ...styles.formGroup }}>
+            <label style={styles.label}>Subject</label>
+            <input type="text" value={request.subject} style={styles.input} readOnly />
           </div>
         </div>
 
-        <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem', fontWeight: '600' }}>Group Members</h3>
+        <h3 style={styles.membersHeader}>Group Members</h3>
         <table style={{ ...styles.table, marginBottom: '1rem' }}>
           <thead>
             <tr>
               <th style={{ ...styles.th, borderTopLeftRadius: '7px' }}>#</th>
               <th style={styles.th}>Name</th>
-              <th style={{ ...styles.th, borderTopRightRadius: '7px' }}>Course ID</th>
+              <th style={{ ...styles.th, borderTopRightRadius: '7px' }}>Email</th>
             </tr>
           </thead>
           <tbody>
-            {groupMembers.map((i) => (
-              <tr key={i}>
-                <td style={styles.td}>{i}</td>
-                <td style={styles.td}>Juan Dela Cruz</td>
-                <td style={styles.td}>HM 001</td>
+            {members.others?.map((m, i) => (
+              <tr key={m._id}>
+                <td style={styles.td}>{i + 1}</td>
+                <td style={styles.td}>{m.user?.name || '(unknown)'}</td>
+                <td style={styles.td}>{m.user?.email || '(unknown)'}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '4rem',
-            marginBottom: '0.1rem',
-          }}
-        >
-          <h3 style={{ margin: 0, fontWeight: '600', fontSize: '20px' }}>List of Borrowed Items</h3>
-          <div style={styles.itemCountContainer}>Total ({borrowedItems.length})</div>
+        <div style={{ display: 'flex', gap: '2rem', marginTop: '2.5rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
+            <label style={styles.label}>Approved by (Instructor):</label>
+            <input type="text" value={instructor ? `${instructor.name} (${instructor.email})` : 'N/A'} style={styles.input} readOnly />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, ...styles.formGroup }}>
+            <label style={styles.label}>Approved by (Program Head):</label>
+            <input type="text" value={programhead ? `${programhead.name} (${programhead.email})` : 'N/A'} style={styles.input} readOnly />
+          </div>
+        </div>
+
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:'2rem',marginBottom:'0.1rem'}}>
+          <h3 style={styles.sectionHeader}>List of Borrowed Items</h3>
+          <div style={styles.itemCountContainer}>Total ({items.length})</div>
         </div>
 
         <table style={styles.table}>
@@ -232,58 +339,41 @@ const RequestDetailsAdmin = () => {
               <th style={{ ...styles.th, borderTopLeftRadius: '8px' }}>#</th>
               <th style={styles.th}>Image</th>
               <th style={styles.th}>Item Name</th>
-              <th style={styles.th}>Category</th>
               <th style={styles.th}>Quantity</th>
               <th style={styles.th}>Unit</th>
               <th style={{ ...styles.th, borderTopRightRadius: '8px' }}>Price</th>
             </tr>
           </thead>
           <tbody>
-            {borrowedItems.map((i) => (
-              <tr key={i}>
-                <td style={styles.td}>{i}</td>
-                <td style={styles.td}>
-                  <img
-                    src={SpoonImage}
-                    alt="Spoon"
-                    style={{ borderRadius: '8px', width: '50px', height: '50px', objectFit: 'cover' }}
-                  />
-                </td>
-                <td style={styles.td}>Spoon</td>
-                <td style={styles.td}>Pantry Tools</td>
-                <td style={styles.td}>4</td>
-                <td style={styles.td}>Pcs</td>
-                <td style={styles.td}>₱25.00</td>
+            {items.map((item, i) => (
+              <tr key={item._id}>
+                <td style={styles.td}>{i + 1}</td>
+                <td style={styles.td}><img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt={item.name} style={styles.itemImage} /></td>
+                <td style={styles.td}>{item.name}</td>
+                <td style={styles.td}>{item.requested_qty}</td>
+                <td style={styles.td}>{item.unit}</td>
+                <td style={styles.td}>₱{item.price}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div style={styles.actionButtons}>
-          <button className="rejectButton" onClick={() => setShowRejectModal(true)}>
-            Reject Request
-          </button>
-          <button className="approveButton" onClick={() => handleNavigate(setRequestId)}>Approve Request</button>
-        </div>
-
-        {showRejectModal && (
-          <RejectRequestModal
-            onClose={() => setShowRejectModal(false)}
-            onSubmit={(reason) => {
-              console.log('Rejected with reason:', reason);
-              setShowRejectModal(false);
-              setShowDeniedModal(true);
-            }}
-          />
+        {!approvalExists && (
+          <div style={styles.actionButtons}>
+            <button className="reject-btn" style={styles.rejectButton} onClick={() => setShowRejectModal(true)}>Reject Request</button>
+            <button className="approve-btn" style={styles.approveButton} onClick={handleApprove}>Approve Request</button>
+          </div>
         )}
       </main>
 
-      {showDeniedModal && (
-        <DeniedRequestModal
-          onClose={() => setShowDeniedModal(false)}
+      {showRejectModal && (
+        <RejectRequestModal
+          onClose={() => setShowRejectModal(false)}
+          onSubmit={handleReject}
         />
       )}
-
+      {showDeniedModal && <DeniedRequestModal onClose={() => setShowDeniedModal(false)} />}
+      {showApprovedModal && <ApprovedRequestModal onClose={() => setShowApprovedModal(false)} />}
     </div>
   );
 };

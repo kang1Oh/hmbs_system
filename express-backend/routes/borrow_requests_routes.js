@@ -82,7 +82,7 @@ router.get('/by-group-or-user/:user_id', async (req, res) => {
   }
 });
 
-// GET new requests for a specific instructor
+// GET new or processed requests for a specific instructor
 router.get('/instructor/:instructor_id/new', async (req, res) => {
   const instructorId = req.params.instructor_id;
 
@@ -96,9 +96,14 @@ router.get('/instructor/:instructor_id/new', async (req, res) => {
 
     const enriched = await Promise.all(
       requests.map(async (req) => {
+        // check for approval (approved or rejected)
         const approval = await new Promise((resolve) => {
           approvals.findOne(
-            { request_id: req._id, user_id: instructorId, status_id: 2 },
+            {
+              request_id: req._id,
+              user_id: instructorId,
+              status_id: { $in: [2, 6] },
+            },
             (err, doc) => resolve(doc || null)
           );
         });
@@ -108,10 +113,16 @@ router.get('/instructor/:instructor_id/new', async (req, res) => {
           users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
         });
 
+        // determine label
+        let statusLabel = "New";
+        if (approval) {
+          statusLabel = approval.status_id === 2 ? "Approved" : "Denied";
+        }
+
         return {
           ...formatRequest(req),
           student_name: student ? student.name : "Unknown",
-          status: approval ? "Approved" : "New",
+          status: statusLabel,
         };
       })
     );
@@ -154,7 +165,11 @@ router.get('/programhead/new', async (req, res) => {
       requests.map(async (req) => {
         const progApproved = await new Promise((resolve) => {
           approvals.findOne(
-            { request_id: req._id, role_id: { $in: [3, "3"] }, status_id: { $in: [2, "2"] } },
+            { 
+              request_id: req._id, 
+              role_id: { $in: [3, "3"] }, 
+              status_id: { $in: [2, 6, "2", "6"] } 
+            },
             (err, doc) => resolve(doc || null)
           );
         });
@@ -163,12 +178,22 @@ router.get('/programhead/new', async (req, res) => {
           users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
         });
 
+        let statusLabel = "New";
+        if (progApproved) {
+          if (progApproved.status_id == 2 || progApproved.status_id === "2") {
+            statusLabel = "Approved";
+          } else if (progApproved.status_id == 6 || progApproved.status_id === "6") {
+            statusLabel = "Denied";
+          }
+        }
+
         return {
           request_slip_id: req.request_slip_id,
           student_name: student ? student.name : "Unknown",
           subject: req.subject,
           date_requested: req.date_requested,
-          status: progApproved ? "Approved" : "New",
+          status: statusLabel,
+          _id: req._id, 
         };
       })
     );
@@ -219,9 +244,9 @@ router.get('/for-admin', async (req, res) => {
         );
 
         let status = 'New';
-        if (req.status_id === 6) status = 'Declined';
-        else if (adminApproved.has(req._id)) status = 'Approved';
+        if (req.status_id === 6) status = 'Denied';
         else if ([2, 3, 4].includes(req.status_id)) status = 'On-Going';
+        else if ([5].includes(req.status_id)) status = 'Completed';
 
         return {
           request_slip_id: req.request_slip_id,
@@ -229,6 +254,7 @@ router.get('/for-admin', async (req, res) => {
           subject: req.subject,
           date_requested: req.date_requested,
           status,
+          _id: req._id,
         };
       })
     );
@@ -259,6 +285,7 @@ router.get('/completed', async (req, res) => {
           subject: req.subject,
           date_requested: req.date_requested,
           status: 'Completed',
+          _id: req._id, 
         };
       })
     );

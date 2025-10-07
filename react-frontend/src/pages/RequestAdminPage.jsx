@@ -25,9 +25,6 @@ const RequestAdminPage = () => {
   const entriesPerPage = 10;
 
   const handleNavigate = (id) => navigate(`/request-details-admin/${id}`);
-  const handleRowClick = (id) => {
-    handleNavigate(id);
-  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -80,14 +77,14 @@ const RequestAdminPage = () => {
   const pastEnd = Math.min(pastTotal, pastPage * entriesPerPage);
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'new':
+    switch (status) {
+      case 'New':
         return '#2D9CDB'; // blue
-      case 'on-going':
+      case 'On-Going':
         return '#F2C94C'; // green
-      case 'completed':
+      case 'Completed':
         return '#27AE60'; // gray
-      case 'declined':
+      case 'Denied':
         return '#DC2626'; // red
       default:
         return '#9CA3AF'; // neutral gray
@@ -153,7 +150,7 @@ const RequestAdminPage = () => {
     );
   };
 
-  const dropdownOptions = ['All Status', 'New', 'On-Going', 'Declined'];
+  const dropdownOptions = ['All Status', 'New', 'On-Going', 'Denied'];
 
   return (
     <div style={styles.adminPage}>
@@ -167,7 +164,7 @@ const RequestAdminPage = () => {
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#2D9CDB' }}></span> New Request</div>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#F2C94C' }}></span> On-going Request</div>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#27AE60' }}></span> Completed Request</div>
-            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#DC2626' }}></span> Declined Request</div>
+            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#DC2626' }}></span> Denied Request</div>
           </div>
         </div>
         {/* All Requests */}
@@ -212,7 +209,7 @@ const RequestAdminPage = () => {
                   return (
                     <tr
                       key={index}
-                      onClick={() => handleRowClick(item.requestId)}
+                      onClick={() => handleNavigate(item._id)}
                       style={{ cursor: 'pointer', backgroundColor: '#fff' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9f9f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
@@ -261,7 +258,7 @@ const RequestAdminPage = () => {
                   return (
                     <tr
                       key={index}
-                      onClick={() => handleRowClick(item.requestId)}
+                      onClick={() => handleNavigate(item._id)}
                       style={{ cursor: 'pointer', backgroundColor: '#fff' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9f9f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
