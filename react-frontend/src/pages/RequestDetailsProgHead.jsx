@@ -129,6 +129,9 @@ const RequestDetailsProgHead = () => {
         date_approved: new Date().toISOString()
       };
       await axios.post('/api/approvals', payload);
+
+      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 6 });
+
       setApprovalExists(true);
       setShowRejectModal(false);
       setShowDeniedModal(true);
@@ -321,8 +324,20 @@ const RequestDetailsProgHead = () => {
           onSubmit={handleReject}
         />
       )}
-      {showDeniedModal && <DeniedRequestModal onClose={() => setShowDeniedModal(false)} />}
-      {showApprovedModal && <ApprovedRequestModal onClose={() => setShowApprovedModal(false)} />}
+      {showDeniedModal && (
+        <DeniedRequestModal 
+          onClose={() => {
+            setShowDeniedModal(false);
+            navigate('/requests-programhead');
+            }} />)}
+      {showApprovedModal && (
+        <ApprovedRequestModal
+          onClose={() => {
+            setShowApprovedModal(false);
+            navigate(`/requests-programhead`);
+          }}
+        />
+      )}
     </div>
   );
 };

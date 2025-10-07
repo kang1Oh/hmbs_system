@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { Parser } = require('json2csv');
-const { users } = require('../models/db');
+const { users, groups, borrowRequests } = require('../models/db');
 const upload = require('../middleware/upload');
 const csv = require('csv-parser');
 const multer = require('multer');
@@ -176,27 +176,86 @@ router.get('/with-passwords', (req, res) => {
   });
 });
 
-// SEARCH by name + role
-router.get('/search/:role/:name', (req, res) => {
+// SEARCH by name + role with borrow check
+router.get('/search/:role/:name', async (req, res) => {
   const { role, name } = req.params;
   const regex = new RegExp(name, 'i');
-  users.find(
-    { name: regex, role_id: { $in: [Number(role), role] } },
-    (err, docs) => {
-      if (err) return res.status(500).json({ error: err });
-      if (!docs || docs.length === 0) return res.json([]);
-      const unique = {};
-      docs.forEach(u => {
-        unique[u.email] = {
-          _id: u._id,
-          user_id: u.user_id,
-          name: u.name,
-          email: u.email,
-        };
+
+  try {
+    // find users with given role and matching name
+    const foundUsers = await new Promise((resolve, reject) => {
+      users.find(
+        { name: regex, role_id: { $in: [Number(role), role] } },
+        (err, docs) => (err ? reject(err) : resolve(docs || []))
+      );
+    });
+
+    if (!foundUsers.length) return res.json([]);
+
+    // for student role only (4)
+    if (Number(role) === 4 || role === '4') {
+      const userIds = foundUsers.map(u => u._id);
+
+      // find groups that include these users
+      const userGroups = await new Promise((resolve, reject) => {
+        groups.find({ user_id: { $in: userIds } }, (err, docs) =>
+          err ? reject(err) : resolve(docs || [])
+        );
       });
-      res.json(Object.values(unique));
+
+      if (userGroups.length) {
+        const requestIds = [...new Set(userGroups.map(g => g.request_id))];
+
+        // get statuses of related borrow requests
+        const relatedRequests = await new Promise((resolve, reject) => {
+          borrowRequests.find(
+            { _id: { $in: requestIds } },
+            (err, docs) => (err ? reject(err) : resolve(docs || []))
+          );
+        });
+
+        const ongoingRequestIds = new Set(
+          relatedRequests
+            .filter(r => [2, 3, 4].includes(Number(r.status_id)))
+            .map(r => r._id)
+        );
+
+        const invalidUserIds = new Set(
+          userGroups
+            .filter(g => ongoingRequestIds.has(g.request_id))
+            .map(g => g.user_id)
+        );
+
+        // filter out students in ongoing requests
+        const filtered = foundUsers.filter(u => !invalidUserIds.has(u._id));
+
+        const unique = {};
+        filtered.forEach(u => {
+          unique[u.email] = {
+            _id: u._id,
+            user_id: u.user_id,
+            name: u.name,
+            email: u.email,
+          };
+        });
+        return res.json(Object.values(unique));
+      }
     }
-  );
+
+    // for non-students or if no group
+    const unique = {};
+    foundUsers.forEach(u => {
+      unique[u.email] = {
+        _id: u._id,
+        user_id: u.user_id,
+        name: u.name,
+        email: u.email,
+      };
+    });
+    res.json(Object.values(unique));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST create user. Assign numeric user_id if absent.

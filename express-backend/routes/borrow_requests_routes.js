@@ -254,6 +254,7 @@ router.get('/for-admin', async (req, res) => {
           subject: req.subject,
           date_requested: req.date_requested,
           status,
+          status_id: req.status_id,
           _id: req._id,
         };
       })

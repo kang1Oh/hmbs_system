@@ -135,6 +135,10 @@ const RequestDetailsAdmin = () => {
 
       // Step 4: refresh data
       fetchData();
+
+      //Step 5: redirect to RequestApprovedAdmin page
+      navigate(`/request-approved-admin/${request._id}`);
+      
     } catch (err) {
       console.error('Admin approve failed:', err);
     }
@@ -372,8 +376,20 @@ const RequestDetailsAdmin = () => {
           onSubmit={handleReject}
         />
       )}
-      {showDeniedModal && <DeniedRequestModal onClose={() => setShowDeniedModal(false)} />}
-      {showApprovedModal && <ApprovedRequestModal onClose={() => setShowApprovedModal(false)} />}
+      {showDeniedModal && (
+        <DeniedRequestModal 
+          onClose={() => {
+            setShowDeniedModal(false);
+            navigate('/requests-admin');
+            }} />)}
+      {showApprovedModal && (
+        <ApprovedRequestModal
+          onClose={() => {
+            setShowApprovedModal(false);
+            navigate(`/request-approved-admin/${request._id}`);
+          }}
+        />
+      )}
     </div>
   );
 };

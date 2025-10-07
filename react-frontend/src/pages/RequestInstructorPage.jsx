@@ -103,7 +103,7 @@ const RequestInstructorPage = () => {
       textAlign: 'center',
       backgroundColor: '#a52a2a',
       color: 'white',
-      fontWeight: 600,
+      fontWeight: 100,
     },
     statusBadge: {
       padding: '0.4rem 1rem',

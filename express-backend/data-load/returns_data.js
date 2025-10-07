@@ -21,7 +21,6 @@ function readReturnsFromCSV(filePath) {
       .on('data', (row) => {
         console.log('🧾 Raw Row:', row);
 
-        const return_id = row['return_id']?.trim();
         const request_id = row['request_id']?.trim();
         const tool_id = row['tool_id']?.trim();
         const quantity = row['quantity']?.trim();
@@ -31,9 +30,8 @@ function readReturnsFromCSV(filePath) {
         const return_date = row['return_date']?.trim();
         const nedb_id = row['nedb_id']?.trim();
 
-        if (return_id && request_id && tool_id && quantity && status && returned_by && return_date) {
+        if (request_id && tool_id && quantity && status && returned_by && return_date) {
           const parsed = {
-            return_id: Number(return_id),
             request_id: (request_id),
             tool_id: (tool_id),
             quantity: Number(quantity),
@@ -61,7 +59,6 @@ async function exportReturnsToCSV() {
     const returns = response.data;
 
     const fields = [
-      'return_id',
       'request_id',
       'tool_id',
       'quantity',
@@ -75,7 +72,6 @@ async function exportReturnsToCSV() {
     const parser = new Parser({ fields });
     const csv = parser.parse(
       returns.map((r) => ({
-        return_id: r.return_id,
         request_id: r.request_id,
         tool_id: r.tool_id,
         quantity: r.quantity,
@@ -103,13 +99,13 @@ async function testReturnsAPI() {
     for (const ret of returns) {
       try {
         const response = await axios.post(BASE_URL, ret);
-        console.log(`✅ Created return: ${ret.return_id}`);
+        console.log(`✅ Created return: ${ret._id}`);
         console.log('📦 Response:', response.data);
       } catch (err) {
         if (err.response) {
-          console.error(`❌ Failed to create return "${ret.return_id}":`, err.response.data);
+          console.error(`❌ Failed to create return "${ret._id}":`, err.response.data);
         } else {
-          console.error(`❌ Error posting return "${ret.return_id}":`, err.message);
+          console.error(`❌ Error posting return "${ret._id}":`, err.message);
         }
       }
     }

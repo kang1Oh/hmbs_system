@@ -24,7 +24,13 @@ const RequestAdminPage = () => {
 
   const entriesPerPage = 10;
 
-  const handleNavigate = (id) => navigate(`/request-details-admin/${id}`);
+  const handleNavigate = (request) => {
+    if (request.status_id === 2 || request.status_id === 3 || request.status_id === 4) {
+      navigate(`/request-approved-admin/${request._id}`);
+    } else {
+      navigate(`/request-details-admin/${request._id}`);
+    }
+  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -40,6 +46,7 @@ const RequestAdminPage = () => {
           subject: r.subject,
           requestDate: r.date_requested,
           statusLabel: r.status,
+          status_id: r.status_id,
           _id: r._id,
         }));
 
@@ -109,9 +116,9 @@ const RequestAdminPage = () => {
     tableWrapper: { borderLeft: '1px solid #991F1F', borderRight: '1px solid #991F1F', borderBottom: '1px solid #991F1F', borderRadius: '14px 14px 10px 10px' },
     table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'transparent' },
     tableHead: { backgroundColor: '#991f1f', color: '#fff' },
-    tableHeaderCell: { padding: '15px 22px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle' },
+    tableHeaderCell: { padding: '15px 22px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', fontWeight:'100'},
     tableCell: { padding: '10px 5px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'transparent' },
-    narrowHeaderCell: { padding: '0 25px 0 18px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle' },
+    narrowHeaderCell: { padding: '0 25px 0 18px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', fontWeight:'100' },
     narrowCell: { padding: '0px 26px 0 16px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'transparent' },
     statusTag: { width: '115px', height: '32px', lineHeight: '30px', textAlign: 'center', borderRadius: '99px', color: '#fff', fontSize: '14px', display: 'inline-block' },
     exportBtn: { background: '#991f1f', border: '1px solid #991f1f', borderRadius: '999px', padding: '8px 25px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '14px', fontWeight: 500, marginBottom: '12px', fontFamily: 'Poppins, sans-serif' },
@@ -209,7 +216,7 @@ const RequestAdminPage = () => {
                   return (
                     <tr
                       key={index}
-                      onClick={() => handleNavigate(item._id)}
+                      onClick={() => handleNavigate(item)}
                       style={{ cursor: 'pointer', backgroundColor: '#fff' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9f9f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
@@ -258,7 +265,7 @@ const RequestAdminPage = () => {
                   return (
                     <tr
                       key={index}
-                      onClick={() => handleNavigate(item._id)}
+                      onClick={() => handleNavigate(item)}
                       style={{ cursor: 'pointer', backgroundColor: '#fff' }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9f9f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}

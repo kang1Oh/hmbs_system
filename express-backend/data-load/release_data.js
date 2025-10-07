@@ -21,15 +21,13 @@ function readReleasesFromCSV(filePath) {
       .on('data', (row) => {
         console.log('🧾 Raw Row:', row);
 
-        const release_id = row['release_id']?.trim();
         const request_id = row['request_id']?.trim();
         const released_by = row['released_by']?.trim();
         const release_date = row['release_date']?.trim();
         const nedb_id = row['nedb_id']?.trim();
 
-        if (release_id && request_id && released_by && release_date) {
+        if (request_id && released_by && release_date) {
           const parsed = {
-            release_id: Number(release_id),
             request_id: (request_id),
             released_by,
             release_date,
@@ -53,7 +51,6 @@ async function exportReleasesToCSV() {
     const releases = response.data;
 
     const fields = [
-      'release_id',
       'request_id',
       'released_by',
       'release_date',
@@ -63,7 +60,6 @@ async function exportReleasesToCSV() {
     const parser = new Parser({ fields });
     const csv = parser.parse(
       releases.map((r) => ({
-        release_id: r.release_id,
         request_id: r.request_id,
         released_by: r.released_by,
         release_date: r.release_date,
@@ -88,17 +84,17 @@ async function testReleasesAPI() {
     for (const release of releases) {
       try {
         const response = await axios.post(BASE_URL, release);
-        console.log(`✅ Created release: ${release.release_id}`);
+        console.log(`✅ Created release: ${release._id}`);
         console.log('📦 Response:', response.data);
       } catch (err) {
         if (err.response) {
           console.error(
-            `❌ Failed to create release "${release.release_id}":`,
+            `❌ Failed to create release "${release._id}":`,
             err.response.data
           );
         } else {
           console.error(
-            `❌ Error posting release "${release.release_id}":`,
+            `❌ Error posting release "${release._id}":`,
             err.message
           );
         }

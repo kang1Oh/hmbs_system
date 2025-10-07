@@ -1,196 +1,339 @@
-import React, { useState } from 'react';
-import Sidebar from '../components/Sidebar';
-import TransactionModal from '../components/TransactionModal';
-import { FaFileAlt, FaBoxOpen, FaClipboardList } from 'react-icons/fa';
-import sampleImage1 from '../assets/images/plates.jpg';
-import sampleImage2 from '../assets/images/spoon.png';
-import sampleImage3 from '../assets/images/wine.jpg';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import Sidebar from "../components/Sidebar";
+import TransactionModal from "../components/TransactionModal";
+import { FaFileAlt, FaBoxOpen, FaClipboardList } from "react-icons/fa";
+
+const statusLabels = {
+  1: "Pending",
+  2: "Approved",
+  3: "Released",
+  4: "Reviewed",
+  5: "Returned",
+  6: "Denied",
+};
+
+const statusColors = {
+  2: "#FFA500", // Approved / Reserved
+  3: "#007BFF", // Released
+  4: "#28A745", // Reviewed / Returned
+  5: "#28A745", // Completed / Returned
+  6: "#DC3545", // Denied / Needs Replacement
+};
 
 const RequestApprovedAdmin = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [request, setRequest] = useState(null);
+  const [instructor, setInstructor] = useState(null);
+  const [members, setMembers] = useState({ leader: null, others: [] });
+  const [items, setItems] = useState([]); // enriched borrow-items with tool info
+  const [itemStatuses, setItemStatuses] = useState([]); // parallell to items
+  const [itemRemarks, setItemRemarks] = useState([]); // parallell to items
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [hoverBack, setHoverBack] = useState(false);
+  const [hoverTransaction, setHoverTransaction] = useState(false);
+
   const styles = {
-    layout: {
-      display: 'flex',
-      minHeight: '100vh',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    main: {
-      marginLeft: '240px',
-      flex: 1,
-      backgroundColor: '#ffffff',
-      padding: '2rem',
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '0.2rem',
-      fontSize: '14px',
-    },
-    status: {
-      backgroundColor: '#ffa500',
-      color: 'white',
-      padding: '0.2rem 0.7rem',
-      borderRadius: '1rem',
-      fontSize: '15px',
-      marginLeft: '0.2rem',
-    },
-    goBack: {
-      background: 'none',
-      border: 'none',
-      color: '#8A1F2B',
-      textDecoration: 'underline',
-      cursor: 'pointer',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '17px',
-      fontWeight: 600,
-      transition: 'all 0.3s ease',
-    },
-    formGroup: {
-      marginBottom: '1.4rem',
-    },
-    label: {
-      display: 'block',
-      marginBottom: '0.2rem',
-      fontWeight: 600,
-    },
-    input: {
-      width: '100%',
-      padding: '0.8rem',
-      borderRadius: '7px',
-      border: '0.5px solid #1A1A1A',
-      fontSize: '0.9rem',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'separate',
-      borderSpacing: 0,
-      marginTop: '0.5rem',
-      backgroundColor: 'white',
-      borderRadius: '10px',
-      border: '1px solid #8A1F2B',
-    },
-    th: {
-      backgroundColor: '#8A1F2B',
-      color: 'white',
-      padding: '1rem',
-      textAlign: 'center',
-      fontWeight: 600,
-    },
-    td: {
-      padding: '1rem',
-      textAlign: 'center',
-      borderBottom: '1px solid #ddd',
-    },
-    tdBorrowed: {
-      padding: '1.5rem',
-      textAlign: 'center',
-      borderBottom: '1px solid #ddd',
-    },
-    tdLeftBorrowed: {
-      padding: '1.6rem',
-      textAlign: 'left',
-      borderBottom: '1px solid #ddd',
-    },
-    image: {
-      width: '50px',
-      height: '50px',
-      objectFit: 'contain',
-      display: 'block',
-      margin: '0 auto',
-    },
-    selectBase: {
-      width: '165px',
-      padding: '10px 40px 10px 14px',
-      borderRadius: '8px',
-      fontWeight: '600',
-      fontFamily: 'inherit',
-      backgroundColor: '#fff',
-      appearance: 'none',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'right 10px center',
-      backgroundSize: '18px',
-      cursor: 'pointer',
-    },
-    remarksInput: {
-      width: '100%',
-      padding: '0.7rem',
-      fontSize: '0.9rem',
-      borderRadius: '6px',
-      border: '1px solid #ccc',
-      fontFamily: 'Poppins, sans-serif',
-    },
-    completedButton: {
-      backgroundColor: '#8A1F2B',
-      color: 'white',
-      padding: '14px 24px',
-      borderRadius: '50px',
-      border: 'none',
-      float: 'right',
-      marginTop: '2rem',
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-      fontSize: '0.9rem',
-      transition: 'all 0.3s ease',
-    },
-    completedButtonDisabled: {
-      backgroundColor: '#c58b8b', // muted reddish
-      color: '#fff',
-      padding: '14px 24px',
-      borderRadius: '50px',
-      border: 'none',
-      float: 'right',
-      marginTop: '2rem',
-      cursor: 'not-allowed',
-      fontFamily: 'inherit',
-      fontSize: '0.9rem',
-      opacity: 0.6,
-    },
+    layout: { display: "flex", minHeight: "100vh", fontFamily: "Poppins, sans-serif" },
+    main: { marginLeft: 240, flex: 1, background: "#fff", padding: "2rem" },
+    header: {display: "flex", justifyContent: "space-between", alignItems: "center",marginBottom: "0.2rem", fontSize: 14},
+    goBack: {background:'none',border:'none',color:'#8A1F2B',textDecoration:'underline',cursor:'pointer',fontFamily:'Poppins, sans-serif',fontSize:'17px',fontWeight:600},
+    status: {background: "#ffa500", color: "#fff", padding: "0.2rem 0.7rem",borderRadius: "1rem", fontSize: 15, marginLeft: "0.2rem"},
+    input: {width: "100%", padding: "0.8rem", borderRadius: 7,border: "0.5px solid #1A1A1A", fontSize: "0.9rem",fontFamily: "Poppins, sans-serif"},
+    table: {width: "100%", borderCollapse: "separate", borderSpacing: 0,marginTop: "0.5rem", background: "#fff", borderRadius: 10,border: "1px solid #8A1F2B"},
+    th: {background: "#8A1F2B", color: "#fff", padding: "1rem",textAlign: "center", fontWeight: 600},
+    td: { padding: "1rem", textAlign: "center", borderBottom: "1px solid #ddd" },
+    tdLeft: { padding: "1.6rem", textAlign: "left", borderBottom: "1px solid #ddd" },
+    image: { width: 50, height: 50, objectFit: "contain", display: "block", margin: "0 auto" },
+    select: {width: 165, padding: "10px 40px 10px 14px", borderRadius: 8, fontWeight: 600,fontFamily: "inherit", background: "#fff", appearance: "none",backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center",backgroundSize: 18, cursor: "pointer"},
+    remarks: {width: "100%", padding: "0.7rem", fontSize: "0.9rem",borderRadius: 6, border: "1px solid #ccc", fontFamily: "Poppins, sans-serif"},
+    button: {fontFamily: "Poppins, sans-serif", fontSize: "14px" ,background: "#8A1F2B", color: "#fff", padding: "14px 24px", borderRadius: 50,border: "none", float: "right", marginTop: "2rem", cursor: "pointer",transition: "0.3s ease"},
+    buttonDisabled: {fontFamily: "Poppins, sans-serif", fontSize: "14px" ,background: "#c58b8b", color: "#fff", padding: "14px 24px", borderRadius: 50,border: "none", float: "right", marginTop: "2rem", cursor: "not-allowed",opacity: 0.6},
   };
 
-  const [showModal, setShowModal] = useState(false);
-  const [hoveringBack, setHoveringBack] = useState(false);
-  const [hoveringTransaction, setHoveringTransaction] = useState(false);
-
-  const borrowedItems = [
-    { img: sampleImage1, name: 'Stone 27cm Granite Dinner Plate', quantity: '12 Pcs' },
-    { img: sampleImage2, name: 'Silver 14cm Tea Spoon', quantity: '12 Pcs' },
-    { img: sampleImage3, name: 'Stone 27cm Granite Dinner Plate', quantity: '6 Pcs' },
-  ];
-
-  const [itemStatuses, setItemStatuses] = useState(borrowedItems.map(() => 'Reserved'));
-
-  // check if all items are returned
-  const allReturned = itemStatuses.every(status => status === 'Returned');
+  const statusLabel = statusLabels[request?.status_id] || "Unknown";
+  const statusColor = statusColors[request?.status_id] || "#FFA500";
 
   const getSelectStyle = (status) => {
-    const baseStyle = { ...styles.selectBase };
-    let color = '#FFA500';
-
-    switch (status) {
-      case 'Reserved':
-        color = '#FFA500';
-        break;
-      case 'Released':
-        color = '#007BFF';
-        break;
-      case 'Returned':
-        color = '#28A745';
-        break;
-      case 'Needs Replacement':
-        color = '#DC3545';
-        break;
-    }
-
+    const colors = {
+      Reserved: "#FFA500",
+      Released: "#007BFF",
+      Returned: "#28A745",
+      "Needs Replacement": "#DC3545",
+    };
+    const color = colors[status] || "#FFA500";
     return {
-      ...baseStyle,
-      color: color,
+      ...styles.select,
+      color,
       border: `2px solid ${color}`,
       backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='${encodeURIComponent(
         color
       )}' height='18' viewBox='0 0 24 24' width='18' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>")`,
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "right 8px center",
+      appearance: "none",
     };
   };
+
+  // helper to get current user (expected in localStorage)
+  const getCurrentUser = () => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null") || {};
+    } catch {
+      return {};
+    }
+  };
+
+  // Fetch initial data
+  useEffect(() => {
+    let mounted = true;
+    const fetchAll = async () => {
+      setLoading(true);
+      try {
+        // 1. borrow request
+        const { data: reqData } = await axios.get(`/api/borrow-requests/${id}`);
+        if (!mounted) return;
+        setRequest(reqData);
+
+        // 2. instructor
+        if (reqData.instructor_id) {
+          try {
+            const { data: instr } = await axios.get(`/api/users/${reqData.instructor_id}`);
+            setInstructor(instr);
+          } catch {}
+        }
+
+        // 3. group members
+        try {
+          const { data: group } = await axios.get(`/api/groups/request/${reqData._id}`);
+          const enriched = await Promise.all(
+            group.map(async (gm) => {
+              try {
+                const { data: user } = await axios.get(`/api/users/${gm.user_id}`);
+                return { ...gm, user };
+              } catch {
+                return { ...gm, user: null };
+              }
+            })
+          );
+          const leader = enriched.find((m) => m.is_leader === "yes" || m.is_leader === true);
+          const others = enriched.filter((m) => !(m.is_leader === "yes" || m.is_leader === true));
+          setMembers({ leader, others });
+        } catch {}
+
+        // 4. borrow items then enrich with tool numeric
+        const { data: allItems } = await axios.get("/api/borrow-items");
+        const requestItems = allItems.filter((i) => String(i.request_id) === String(reqData._id));
+        const enrichedItems = await Promise.all(
+          requestItems.map(async (i) => {
+            try {
+              const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+              return {
+                ...i,
+                name: tool.name,
+                quantity: i.requested_qty || i.quantity || 1,
+                unit: tool.unit,
+                price: tool.price,
+                img: tool.img || "",
+                tool_numeric_id: i.tool_id,
+              };
+            } catch {
+              return { ...i, name: i.name || "Unknown", quantity: i.requested_qty || 1, img: "" };
+            }
+          })
+        );
+
+        // 5. existing returns for this request to prefill statuses/remarks
+        const { data: allReturns } = await axios.get("/api/returns");
+        const requestReturns = (allReturns || []).filter((r) => String(r.request_id) === String(reqData._id));
+
+        // 6. existing release for this request
+        const { data: allReleases } = await axios.get("/api/releases");
+        const requestRelease = (allReleases || []).find(
+          (rel) => String(rel.request_id) === String(reqData._id)
+        );
+
+        // build statuses and remarks arrays
+        const initialStatuses = enrichedItems.map((item) => {
+          const itemReturn = requestReturns.find((r) => {
+            return (
+              String(r.tool_id) === String(item.tool_id) ||
+              String(r.tool_id) === String(item._id) ||
+              String(r.tool_id) === String(item.tool_numeric_id)
+            );
+          });
+
+          if (itemReturn) {
+            if (itemReturn.status === "Returned") return "Returned";
+            if (itemReturn.status === "Needs Replacement") return "Needs Replacement";
+            // if it’s reserved in DB, still show reserved unless released
+            if (itemReturn.status === "Reserved") return "Reserved";
+          }
+
+          // if there's a release record, show "Released"
+          if (reqData.status_id === 3 || requestRelease) return "Released";
+
+          // otherwise still reserved
+          return "Reserved";
+        });
+
+        const remarksArr = enrichedItems.map((item) => {
+          const itemReturn = requestReturns.find((r) => {
+            return (
+              String(r.tool_id) === String(item.tool_id) ||
+              String(r.tool_id) === String(item._id) ||
+              String(r.tool_id) === String(item.tool_numeric_id)
+            );
+          });
+          return itemReturn ? itemReturn.remarks || "" : "";
+        });
+
+        setItems(enrichedItems);
+        setItemStatuses(initialStatuses);
+        setItemRemarks(remarksArr);
+      } catch (err) {
+        console.error("RequestApprovedAdmin fetch error:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    return () => (mounted = false);
+  }, [id]);
+
+  // derived booleans
+  const allReleased = items.length > 0 && itemStatuses.every((s) => s === "Released");
+  const anyReturnedOrReplacement = itemStatuses.some((s) => s === "Returned" || s === "Needs Replacement");
+  const allReturnedGood = items.length > 0 && itemStatuses.every((s) => s === "Returned");
+
+  // persist release when allReleased becomes true
+  useEffect(() => {
+    if (!request) return;
+    const doRelease = async () => {
+      // if request already status 3 skip
+      if (request.status_id === 3) return;
+      if (!allReleased) return;
+
+      const currentUser = getCurrentUser();
+      const payload = {
+        request_id: request._id,
+        released_by: currentUser._id || currentUser.user_id || "system",
+        release_date: new Date().toISOString().split("T")[0], // yyyy-mm-dd
+      };
+
+      try {
+        await axios.post("/api/releases", payload);
+        await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 3 });
+        // update local request
+        setRequest((r) => ({ ...r, status_id: 3 }));
+      } catch (err) {
+        console.error("Error creating release or updating request:", err);
+      }
+    };
+
+    doRelease();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allReleased, request]);
+
+  // persist returns when an item's status changes to Returned or Needs Replacement
+  const upsertReturnForItem = async (itemIndex, forcedStatus = null) => {
+    const it = items[itemIndex];
+    const status = forcedStatus || itemStatuses[itemIndex];
+    const remarks = itemRemarks[itemIndex] || "";
+
+    if (!it || !request) return;
+
+    try {
+      const { data: allReturns } = await axios.get("/api/returns");
+      const existing = (allReturns || []).find(
+        (r) =>
+          String(r.request_id) === String(request._id) &&
+          (String(r.tool_id) === String(it.tool_id) || String(r.tool_id) === String(it._id))
+      );
+
+      const payload = {
+        request_id: request._id,
+        tool_id: it.tool_id || it._id,
+        quantity: it.requested_qty || it.quantity || 1,
+        status: status === "Returned" ? "Returned" :
+                status === "Needs Replacement" ? "Needs Replacement" : "Reserved",
+        remarks,
+        returned_by: getCurrentUser()._id || getCurrentUser().user_id || "system",
+        return_date:
+          status === "Returned" || status === "Needs Replacement"
+            ? new Date().toISOString().split("T")[0]
+            : "",
+      };
+
+      if (existing) {
+        await axios.put(`/api/returns/${existing._id}`, payload);
+      } else {
+        await axios.post("/api/returns", payload);
+      }
+
+      if (request.status_id !== 4) {
+        await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 4 });
+        setRequest((r) => ({ ...r, status_id: 4 }));
+      }
+    } catch (err) {
+      console.error("Error upserting return:", err);
+    }
+  };
+
+  // handler for changing an item status
+  const handleStatusChange = async (index, value) => {
+    const updated = [...itemStatuses];
+    updated[index] = value;
+    setItemStatuses(updated);
+
+    if (["Returned", "Needs Replacement"].includes(value)) {
+      await upsertReturnForItem(index, value); // pass it explicitly
+    }
+  };
+
+  // handler for remarks input
+  const handleRemarkChange = (index, value) => {
+    const r = [...itemRemarks];
+    r[index] = value;
+    setItemRemarks(r);
+  };
+
+  // Transaction complete: set borrow_request status_id = 5
+  const handleTransactionComplete = async () => {
+    if (!allReturnedGood || !request) return;
+    try {
+      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 5 });
+      setRequest((r) => ({ ...r, status_id: 5 }));
+      setShowModal(true);
+    } catch (err) {
+      console.error("Error completing transaction:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.layout}>
+        <Sidebar
+          activePage="requests"
+          userRole="Staff"
+          userSubrole="Admin"
+          navItems={[
+            { id: "requests", name: "Requests", icon: <FaFileAlt />, path: "/requests-admin" },
+            { id: "inventory", name: "Inventory", icon: <FaBoxOpen />, path: "/inventory" },
+            { id: "registry", name: "Registry", icon: <FaClipboardList />, path: "/registry" },
+          ]}
+        />
+        <main style={styles.main}>
+          <div>Loading...</div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.layout}>
@@ -199,172 +342,186 @@ const RequestApprovedAdmin = () => {
         userRole="Staff"
         userSubrole="Admin"
         navItems={[
-          { id: 'requests', name: 'Requests', icon: <FaFileAlt />, path: '/requests-admin' },
-          { id: 'inventory', name: 'Inventory', icon: <FaBoxOpen />, path: '/inventory' },
-          { id: 'registry', name: 'Registry', icon: <FaClipboardList />, path: '/registry' },
+          { id: "requests", name: "Requests", icon: <FaFileAlt />, path: "/requests-admin" },
+          { id: "inventory", name: "Inventory", icon: <FaBoxOpen />, path: "/inventory" },
+          { id: "registry", name: "Registry", icon: <FaClipboardList />, path: "/registry" },
         ]}
       />
 
       <main style={styles.main}>
         <div style={styles.header}>
-          <h1>Request No. 000001234</h1>
+          <h1>Request No. {request ? request.request_slip_id || request._id : "—"}</h1>
           <a
             href="/requests-admin"
-            style={{
-              ...styles.goBack,
-              opacity: hoveringBack ? 0.8 : 1,
+            style={{ ...styles.goBack, opacity: hoverBack ? 0.8 : 1 }}
+            onMouseEnter={() => setHoverBack(true)}
+            onMouseLeave={() => setHoverBack(false)}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/requests-admin");
             }}
-            onMouseOver={() => setHoveringBack(true)}
-            onMouseOut={() => setHoveringBack(false)}
           >
             Go Back
           </a>
         </div>
 
         <p>
-          Status: <span style={styles.status}>Approved</span>
+          Status:{" "}
+          <span
+            style={{
+              ...styles.status,
+              background: statusColor,
+            }}
+          >
+            {statusLabel}
+          </span>
         </p>
-        <hr
-          style={{
-            border: 'none',
-            borderTop: '2px solid rgba(97, 97, 97, 0.3)',
-            marginTop: '1rem',
-            marginBottom: '-0.6rem',
-          }}
-        />
+        <hr style={{ border: "none", borderTop: "2px solid rgba(97,97,97,0.3)", margin: "1rem 0 -0.6rem" }} />
 
-        <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Date Requested</label>
-            <input type="text" value="July 02, 2025" style={styles.input} readOnly />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Date Use</label>
-            <input type="text" value="July 08, 2025" style={styles.input} readOnly />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Time</label>
-            <input type="text" value="8:00 AM" style={styles.input} readOnly />
-          </div>
+        <div style={{ display: "flex", gap: "2rem", marginTop: "2rem", flexWrap: "wrap" }}>
+          {[
+            ["Date Requested", request?.date_requested || ""],
+            ["Date Use", request?.lab_date || ""],
+            ["Time", request?.lab_time || ""],
+          ].map(([label, value], i) => (
+            <div key={i} style={{ flex: 1, minWidth: 240 }}>
+              <label style={{ fontWeight: 600 }}>{label}</label>
+              <input style={styles.input} value={value} readOnly />
+            </div>
+          ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Group Leader</label>
-            <input type="text" value="Student 1" style={styles.input} readOnly />
-          </div>
-          <div style={{ flex: 1, minWidth: '240px', ...styles.formGroup }}>
-            <label style={styles.label}>Course</label>
-            <input type="text" value="HM 001" style={styles.input} readOnly />
-          </div>
+        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", marginTop: "2rem" }}>
+          {[
+            ["Group Leader", members.leader?.user?.name || members.leader?.user?.full_name || request?.requested_by || ""],
+            ["Subject", request?.subject || ""],
+          ].map(([label, value], i) => (
+            <div key={i} style={{ flex: 1, minWidth: 240 }}>
+              <label style={{ fontWeight: 600 }}>{label}</label>
+              <input style={styles.input} value={value} readOnly />
+            </div>
+          ))}
         </div>
 
-        <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem', fontWeight: '600' }}>
-          Group Members
-        </h3>
-        <table style={{ ...styles.table, marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: "2.5rem", marginBottom: "0.5rem", fontWeight: 600 }}>Group Members</h3>
+        <table style={{ ...styles.table, marginBottom: "1rem" }}>
           <thead>
             <tr>
-              <th style={{ ...styles.th, borderTopLeftRadius: '7px' }}>#</th>
-              <th style={styles.th}>Name</th>
-              <th style={{ ...styles.th, borderTopRightRadius: '7px' }}>Course ID</th>
+              {["#", "Name", "Email"].map((h, i) => (
+                <th key={i} style={{ ...styles.th, borderTopLeftRadius: i === 0 ? 7 : 0, borderTopRightRadius: i === 2 ? 7 : 0 }}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {[1, 2, 3].map((i) => (
-              <tr key={i}>
-                <td style={styles.td}>{i}</td>
-                <td style={styles.td}>Juan Dela Cruz</td>
-                <td style={styles.td}>HM 001</td>
+            {members.others.map((m, idx) => (
+              <tr key={idx}>
+                <td style={styles.td}>{idx + 1}</td>
+                <td style={styles.td}>{m.user?.name || m.user?.full_name || "Member"}</td>
+                <td style={styles.td}>{m.user?.email || request?.email || ""}</td>
               </tr>
             ))}
+            {!members.leader && members.others.length === 0 && (
+              <tr>
+                <td style={styles.td} colSpan={3}>No group members found</td>
+              </tr>
+            )}
           </tbody>
         </table>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '4rem',
-            marginBottom: '0.1rem',
-          }}
-        >
-          <h3 style={{ margin: 0, fontWeight: '600', fontSize: '20px' }}>List of Borrowed Items</h3>
-          <div style={{ fontWeight: '600', fontSize: '18px', color: '#5A67D8' }}>
-            Total ({borrowedItems.length})
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4rem 0 0.1rem" }}>
+          <h3 style={{ margin: 0, fontWeight: 600, fontSize: 20 }}>List of Borrowed Items</h3>
+          <div style={{ fontWeight: 600, fontSize: 18 }}>
+            Total ({items.length})
           </div>
         </div>
 
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={{ ...styles.th, borderTopLeftRadius: '8px', minWidth: '50px' }}>Image</th>
-              <th style={{ ...styles.th, textAlign: 'left', width: '315px' }}>Item Name</th>
-              <th style={styles.th}>Quantity</th>
-              <th style={{ ...styles.th, width: '180px' }}>Status</th>
-              <th
-                style={{
-                  ...styles.th,
-                  borderTopRightRadius: '7px',
-                  textAlign: 'left',
-                  paddingLeft: '20px',
-                }}
-              >
-                Remarks
-              </th>
+              {["Image", "Item Name", "Quantity", "Status", "Remarks"].map((h, i) => (
+                <th
+                  key={i}
+                  style={{
+                    ...styles.th,
+                    textAlign: "center",
+                    borderTopLeftRadius: i === 0 ? 8 : 0,
+                    borderTopRightRadius: i === 4 ? 7 : 0,
+                    paddingLeft: i === 2 ? 20 : undefined,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {borrowedItems.map((item, idx) => (
+            {items.map((item, idx) => (
               <tr key={idx}>
-                <td style={styles.tdBorrowed}>
-                  <img src={item.img} alt="item" style={styles.image} />
+                <td style={styles.td}>
+                  {item.img ? <img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt="item" style={styles.image} /> : <div style={{ width: 72, height: 48, background: "#eee", borderRadius: 6 }} />}
                 </td>
-                <td style={styles.tdLeftBorrowed}>{item.name}</td>
-                <td style={styles.tdBorrowed}>{item.quantity}</td>
-                <td style={styles.tdBorrowed}>
+                <td style={styles.td}>{item.name}</td>
+                <td style={styles.td}>{item.quantity} {item.unit || ""}</td>
+                <td style={styles.td}>
                   <select
-                    value={itemStatuses[idx]}
-                    onChange={(e) => {
-                      const updated = [...itemStatuses];
-                      updated[idx] = e.target.value;
-                      setItemStatuses(updated);
-                    }}
-                    style={getSelectStyle(itemStatuses[idx])}
+                    value={itemStatuses[idx] || "Reserved"}
+                    onChange={(e) => handleStatusChange(idx, e.target.value)}
+                    style={getSelectStyle(itemStatuses[idx] || "Reserved")}
                   >
-                    <option value="Reserved">Reserved</option>
-                    <option value="Released">Released</option>
-                    <option value="Returned">Returned</option>
-                    <option value="Needs Replacement">Needs Replacement</option>
+                    {["Reserved", "Released", "Returned", "Needs Replacement"].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </td>
-                <td style={styles.tdLeftBorrowed}>
-                  <input type="text" style={styles.remarksInput} />
+                <td style={styles.tdLeft}>
+                  <input
+                    type="text"
+                    style={styles.remarks}
+                    value={itemRemarks[idx] || ""}
+                    onChange={(e) => handleRemarkChange(idx, e.target.value)}
+                    onBlur={async () => {
+                      // save remark if there's already a return entry or if status is returned/needs replacement
+                      if ((itemStatuses[idx] === "Returned" || itemStatuses[idx] === "Needs Replacement") && request) {
+                        await upsertReturnForItem(idx);
+                      }
+                    }}
+                    placeholder="Remarks (optional)"
+                  />
                 </td>
               </tr>
             ))}
+            {items.length === 0 && (
+              <tr>
+                <td style={styles.td} colSpan={5}>No items found for this request.</td>
+              </tr>
+            )}
           </tbody>
         </table>
 
         <button
-          style={allReturned
-            ? { ...styles.completedButton, backgroundColor: hoveringTransaction ? '#731923' : '#8A1F2B', opacity: hoveringTransaction ? 0.9 : 1 }
-            : styles.completedButtonDisabled
+          style={
+            allReturnedGood
+              ? { ...styles.button, backgroundColor: hoverTransaction ? "#731923" : "#8A1F2B", opacity: hoverTransaction ? 0.9 : 1 }
+              : styles.buttonDisabled
           }
-          disabled={!allReturned}
-          onMouseOver={() => allReturned && setHoveringTransaction(true)}
-          onMouseOut={() => allReturned && setHoveringTransaction(false)}
-          onClick={() => {
-            if (allReturned) {
-              setShowModal(true);
-            }
-          }}
+          disabled={!allReturnedGood}
+          onMouseEnter={() => allReturnedGood && setHoverTransaction(true)}
+          onMouseLeave={() => allReturnedGood && setHoverTransaction(false)}
+          onClick={() => allReturnedGood && handleTransactionComplete()}
         >
           Transaction Completed
         </button>
 
-        {showModal && <TransactionModal onClose={() => setShowModal(false)} />}
+        {showModal && (
+          <TransactionModal 
+            onClose={() => {
+              setShowModal(false);
+              navigate('/requests-admin');
+            }}
+            />
+          )}
       </main>
     </div>
   );

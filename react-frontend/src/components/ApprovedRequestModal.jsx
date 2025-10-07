@@ -1,7 +1,7 @@
 import React from 'react';
 import docucheck from '../assets/document-checked.svg'; 
 
-const DeniedRequestModal = ({ onClose }) => {
+const ApprovedRequestModal = ({ onClose }) => {
   const modalStyle = {
     position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -87,4 +87,4 @@ const DeniedRequestModal = ({ onClose }) => {
   );
 };
 
-export default DeniedRequestModal;
+export default ApprovedRequestModal;
