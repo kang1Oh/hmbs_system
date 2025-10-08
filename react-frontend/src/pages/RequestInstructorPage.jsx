@@ -244,7 +244,11 @@ const RequestInstructorPage = () => {
                   <td style={styles.thtd}>{req.requestId}</td>
                   <td style={styles.thtd}>{req.name}</td>
                   <td style={styles.thtd}>{req.subject}</td>
-                  <td style={styles.thtd}>{req.requestDate}</td>
+                  <td style={styles.thtd}>
+                    {req.requestDate
+                      ? new Date(req.requestDate).toISOString().split("T")[0]
+                      : ""}
+                  </td>
                   <td style={styles.thtd}>
                     <span
                       style={{

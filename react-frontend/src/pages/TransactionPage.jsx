@@ -20,6 +20,9 @@ function TransactionPage() {
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [activeRequest, setActiveRequest] = useState(null);
+  const [deniedRequest, setDeniedRequest] = useState(null);
+  const [approvals, setApprovals] = useState([]);
+  const [returns, setReturns] = useState([]);
   const [historyRequests, setHistoryRequests] = useState([]);
 
   const toggleExpand = (index) => {
@@ -87,64 +90,99 @@ function TransactionPage() {
       if (!storedUser) return;
 
       const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser._id}`);
-      const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
+      requests.sort((a, b) => new Date(b.date_requested) - new Date(a.date_requested));
 
-      if (!active) {
+      const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
+      const denied = requests.find(r => r.status_id === 6);
+      const latest = requests[0];
+      const isLatestCompleted = latest && latest.status_id === 5;
+
+      // 🟢 pick the current request FIRST
+      const currentRequest = active || denied || null;
+
+      // 🧹 ensure clean slate when latest request is completed
+      if (isLatestCompleted) {
         setActiveRequest(null);
+        setDeniedRequest(null);
+        setApprovals([]);
+        setReturns([]);
+        setRemarks("No active borrow request yet.");
+        setCurrentStep(0);
         return;
       }
 
-      setCurrentStep(Number(active.status_id));
-
-      if (active.status_id === 1) {
-        setRemarks("Borrowing request has been submitted for approval.");
-      } else if (active.status_id === 2 || active.status_id === 6) {
-        const { data: approvals } = await axios.get("/api/approvals");
-        const approval = approvals.find(a => a.request_id == active.request_slip_id);
-        setRemarks(approval ? approval.remarks : '');
-      } else if (active.status_id === 3) {
-        setRemarks("Your items have been released.");
-      } else if (active.status_id === 4) {
-        setRemarks("Your returned items are currently under review.");
-      } else if (active.status_id === 5) {
-        setRemarks("All items have been returned in good condition.");
+      // 🧠 branch logic
+      if (denied && !active) {
+        setActiveRequest(null);
+        setDeniedRequest(denied);
+        setCurrentStep(1);
+        setRemarks("Your borrowing request was denied. See below for details.");
+      } else if (active) {
+        setDeniedRequest(null);
+        setActiveRequest(active);
+        setCurrentStep(Number(active.status_id));
+      } else {
+        setActiveRequest(null);
+        setDeniedRequest(null);
+        setApprovals([]);
       }
 
-      // fetch items
-      const { data: allItems } = await axios.get(`/api/borrow-items`);
-      const requestItems = allItems.filter(i => i.request_id === active._id);
+      // ✅ approvals, items, group, returns — only if currentRequest exists
+      if (!currentRequest) return;
 
+      const { data: allApprovals } = await axios.get("/api/approvals");
+      const requestApprovals = allApprovals.filter(a => a.request_id === currentRequest._id);
+
+      const { data: allUsers } = await axios.get(`/api/users`);
+      const enrichedApprovals = requestApprovals.map(a => ({
+        ...a,
+        name: a.name || allUsers.find(u => u._id === a.user_id)?.name || "Unknown",
+      }));
+
+      const roleOrder = { 2: 1, 3: 2, 1: 3 };
+      const sortedApprovals = enrichedApprovals.sort((a, b) => {
+        const orderA = roleOrder[a.role_id] || 99;
+        const orderB = roleOrder[b.role_id] || 99;
+        return orderA - orderB;
+      });
+      setApprovals(sortedApprovals);
+
+      // remarks per status
+      if (currentRequest.status_id === 1) setRemarks("Borrowing request has been submitted for approval.");
+      else if (currentRequest.status_id === 2) setRemarks("Your borrow request has been approved.");
+      else if (currentRequest.status_id === 3) setRemarks("Your items have been released.");
+      else if (currentRequest.status_id === 4) setRemarks("Your returned items are currently under review.");
+      else if (currentRequest.status_id === 5) setRemarks("All items have been returned in good condition.");
+
+      // fetch items & groups
+      const { data: allItems } = await axios.get(`/api/borrow-items`);
+      const requestItems = allItems.filter(i => i.request_id === currentRequest._id);
       const enrichedItems = await Promise.all(
         requestItems.map(async (i) => {
           const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
-          return {
-            ...i,
-            name: tool.name,
-            unit: tool.unit,
-            price: tool.price,
-            img: tool.img || itemImage,
-          };
+          return { ...i, name: tool.name, unit: tool.unit, price: tool.price, img: tool.img || itemImage };
         })
       );
 
-      // fetch users + groups
-      const { data: allUsers } = await axios.get(`/api/users`);
-      const { data: groupMembers } = await axios.get(`/api/groups/request/${active._id}`);
-
+      const { data: groupMembers } = await axios.get(`/api/groups/request/${currentRequest._id}`);
       const enrichedGroups = groupMembers.map(gm => {
         const user = allUsers.find(u => u._id === gm.user_id);
         return { ...gm, user };
       });
 
-      // find instructor
-      const instructor = allUsers.find(u => u._id === active.instructor_id);
+      const instructor = allUsers.find(u => u._id === currentRequest.instructor_id);
+      const { data: allReturns } = await axios.get("/api/returns");
+      const requestReturns = allReturns.filter(r => String(r.request_id) === String(currentRequest._id));
+      setReturns(requestReturns);
 
-      setActiveRequest({
-        ...active,
-        items: enrichedItems || [],
-        groupMembers: enrichedGroups || [],
-        instructor: instructor || null,
-      });
+      if (active) {
+        setActiveRequest({
+          ...currentRequest,
+          items: enrichedItems,
+          groupMembers: enrichedGroups,
+          instructor,
+        });
+      }
 
     } catch (err) {
       console.error("Error fetching active request:", err);
@@ -153,7 +191,6 @@ function TransactionPage() {
 
   fetchActiveRequest();
 }, []);
-
 
   //transaction history fetch
   useEffect(() => {
@@ -219,7 +256,8 @@ function TransactionPage() {
   }, []);
 
   const renderStatusTracker = () => {
-    if (!activeRequest) {
+    // If there’s no active or denied request
+    if (!activeRequest && !deniedRequest) {
       return (
         <div style={{ ...cardStyle, padding: '30px 24px', backgroundColor: 'rgba(255,255,255,0.95)', textAlign: 'center' }}>
           <p style={{ fontSize: '15px', color: '#666' }}>No active borrow request yet.</p>
@@ -227,9 +265,13 @@ function TransactionPage() {
       );
     }
 
+    // Pick which request to display
+    const current = activeRequest || deniedRequest;
+
     return (
-      <div style={{ ...cardStyle, padding: '30px 24px', backgroundColor: 'rgba(255,255,255,0.95)' }}>
-        <p style={{ fontSize: '17px', fontWeight: 600, margin: '0 0 2px 15px', lineHeight: 1.2 }}>
+      <div style={{ ...cardStyle, padding: '30px 10px', backgroundColor: 'rgba(255,255,255,0.95)' }}>
+        {/* Status Tracker */}
+        <p style={{ fontSize: '17px', fontWeight: 600, margin: '0 0 3px 15px', lineHeight: 1.2 }}>
           Current Status
         </p>
         <p style={{ fontSize: '15px', color: '#444', fontWeight: 400, margin: '0 0 20px 15px', lineHeight: 1.2 }}>
@@ -237,32 +279,14 @@ function TransactionPage() {
         </p>
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
           <div
-            style={{
-              position: 'absolute',
-              top: '48px',
-              left: '8%',
-              right: '8%',
-              height: '2px',
-              backgroundColor: '#991F1F',
-              zIndex: 0,
-            }}
+            style={{position: 'absolute',top: '48px',left: '8%',right: '8%',height: '2px',backgroundColor: '#991F1F',zIndex: 0}}
           />
           {steps.map((label, index) => {
-            const isCompleted = index < currentStep; // careful: status_id aligns 1-based
+            const isCompleted = index < currentStep;
             return (
               <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, flex: 1 }}>
                 <div
-                  style={{
-                    width: '85px',
-                    height: '85px',
-                    borderRadius: '50%',
-                    backgroundColor: isCompleted ? '#991F1F' : '#fff',
-                    border: '2px solid #991F1F',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '12px',
-                  }}
+                  style={{width: '85px', height: '85px', borderRadius: '50%', backgroundColor: isCompleted ? '#991F1F' : '#fff', border: '2px solid #991F1F', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'}}
                 >
                   <img
                     src={progressChecked}
@@ -281,6 +305,72 @@ function TransactionPage() {
             );
           })}
         </div>
+
+        {/* Approval Timeline */}
+        {((current?.status_id && [1, 2, 3, 4, 5, 6].includes(current.status_id)) ||
+          (deniedRequest?.status_id === 6)) && (
+          <div style={{ marginTop: '10px', padding: '24px', backgroundColor: '#fff', borderRadius: '10px' }}>
+            <hr style={{ margin: '10px 0 20px', border: 'none', borderTop: '1px solid #ddd' }} />
+            <p style={{ fontSize: '17px', fontWeight: 600, marginBottom: '16px' }}>Request No. {current.request_slip_id} Approval Timeline</p>
+
+            {approvals.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginLeft: '12px' }}>
+                {approvals.map((appr, i) => {
+                  const isDenied = appr.status_id === 6;
+                  const color = isDenied ? '#DC3545' : '#28A745';
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', position: 'relative' }}>
+                      {/* Connector line */}
+                      {i !== approvals.length - 1 && (
+                        <div
+                          style={{position: 'absolute', top: '35px', left: '9px', width: '2px', height: 'calc(100% - 35px)', backgroundColor: '#ddd'}}
+                        />
+                      )}
+
+                      {/* Status circle */}
+                      <div
+                        style={{width: '18px', height: '18px', borderRadius: '50%', backgroundColor: color, marginTop: '5px', flexShrink: 0}}
+                      />
+
+                      {/* Info Card */}
+                      <div style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        borderTop: '1px solid #ddd',
+                        borderRight: '1px solid #ddd',
+                        borderBottom: '1px solid #ddd',
+                        borderRadius: '8px',
+                        borderLeft: `4px solid ${color}`,
+                      }}>
+                        <div style={{ fontWeight: 600, color: '#222' }}>{appr.name}</div>
+                        <div style={{ fontSize: '13.5px', color: '#666', marginTop: '2px' }}>
+                          {appr.role_id === 1
+                            ? 'Administrator'
+                            : appr.role_id === 2
+                            ? 'Instructor'
+                            : appr.role_id === 3
+                            ? 'Program Head'
+                            : 'Staff'}
+                        </div>
+                        <div style={{ fontSize: '14px', marginTop: '6px' }}>
+                          <strong style={{ color }}>{isDenied ? 'Denied' : 'Approved'}</strong> — {appr.remarks || 'No remarks'}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
+                          {new Date(appr.date_approved).toLocaleString('en-PH', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p style={{ fontSize: '14px', color: '#555' }}>No approvals yet.</p>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -300,7 +390,7 @@ function TransactionPage() {
           {/* On-going Borrowed Request */}
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
+              <div style={{marginLeft: "7px"}}>
                 <div style={{ ...headingStyle, fontSize: "17px" }}>On-going Borrowed Request</div>
                 <div style={{ ...subTextStyle, marginBottom: "10px" }}>
                   {activeRequest ? `Request No. ${activeRequest.request_slip_id}` : "No active borrow request yet."}
@@ -310,14 +400,14 @@ function TransactionPage() {
                   <button
                     style={{
                       ...buttonStyle,
-                      backgroundColor: activeRequest.status_id === 2 
+                      backgroundColor: activeRequest.status_id !== 1 
                         ? buttonStyle.backgroundColor 
                         : "#b1b1b1ff",
-                      cursor: activeRequest.status_id === 2 ? "pointer" : "not-allowed",
+                      cursor: activeRequest.status_id !== 1 ? "pointer" : "not-allowed",
                     }}
-                    disabled={activeRequest.status_id !== 2}
+                    disabled={activeRequest.status_id === 1}
                     onClick={() => {
-                      if (activeRequest.status_id !== 2) return;
+                      if (activeRequest.status_id === 1) return;
 
                       const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
                       const fileUrl = `${baseUrl}/pdf/borrow_slip_${activeRequest.request_slip_id}.pdf`;
@@ -349,7 +439,7 @@ function TransactionPage() {
                   </div>
                   <div style={{ flex: "1 1 45%" }}>
                     {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
-                      <div style={{ marginTop: "10px" }}>
+                      <div >
                         {(() => {
                           const leader = activeRequest.groupMembers.find(gm => gm.is_leader);
                           const members = activeRequest.groupMembers.filter(gm => !gm.is_leader);
@@ -412,19 +502,65 @@ function TransactionPage() {
                         <td style={tableCell}>{item.unit}</td>
                         <td style={tableCell}>₱ {item.price}</td>
                         <td style={tableCell}>
-                          <span
-                            style={{
-                              fontSize: "13.5px",
-                              padding: "4px 10px",
-                              backgroundColor: "#E6F0FF",
-                              color: "#0053A6",
-                              borderRadius: "5px",
-                              fontWeight: 500,
-                              display: "inline-block",
-                            }}
-                          >
-                            Requested
-                          </span>
+                          {(() => {
+                            const requestId = activeRequest._id;
+                            const statusId = activeRequest.status_id;
+
+                            // 🔍 find any return entry for this tool in this request
+                            const itemReturn = returns?.find(
+                              (r) =>
+                                String(r.request_id) === String(requestId) &&
+                                (String(r.tool_id) === String(item.tool_id) ||
+                                String(r.tool_id) === String(item._id) ||
+                                String(r.tool_id) === String(item.tool_numeric_id))
+                            );
+
+                            // determine per-item status
+                            let itemStatus = "Released";
+
+                            if (itemReturn) {
+                              if (itemReturn.status === "Returned") itemStatus = "Returned";
+                              else if (itemReturn.status === "Needs Replacement") itemStatus = "Needs Replacement";
+                              else itemStatus = "Released";
+                            } 
+                            else if (statusId === 3 || statusId === 4) {
+                              // Request released = items marked released if no return record yet
+                              itemStatus = "Released";
+                            } 
+                            else if (statusId === 2) {
+                              // Request approved but not yet released
+                              itemStatus = "Reserved";
+                            }
+                            else if (statusId === 1){
+                              // Request has just been submitted
+                              itemStatus = "Pending";
+                            }
+
+                            // color mapping
+                            const statusColors = {
+                              Pending: "#6C757D",
+                              Reserved: "#FFA500",
+                              Released: "#007BFF",
+                              Returned: "#28A745",
+                              "Needs Replacement": "#DC3545",
+                            };
+
+                            return (
+                              <span
+                                style={{
+                                  fontSize: "13.5px",
+                                  padding: "4px 10px",
+                                  backgroundColor: `${statusColors[itemStatus]}20`,
+                                  color: statusColors[itemStatus],
+                                  borderRadius: "5px",
+                                  fontWeight: 500,
+                                  display: "inline-block",
+                                }}
+                              >
+                                {itemStatus}
+                              </span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -494,7 +630,7 @@ function TransactionPage() {
                       </div>
                       <div style={{ flex: "1 1 45%" }}>
                         {req.groupMembers && req.groupMembers.length > 0 && (
-                          <div style={{ marginTop: "10px" }}>
+                          <div>
                             {(() => {
                               const leader = req.groupMembers.find(gm => gm.is_leader);
                               const members = req.groupMembers.filter(gm => !gm.is_leader);
@@ -549,7 +685,15 @@ function TransactionPage() {
                               </td>
                               <td style={{ textAlign: "center", padding: "10px" }}>{item.requested_qty}</td>
                               <td style={{ padding: "10px" }}>{item.unit}</td>
-                              <td style={{ padding: "10px", color: "#267326", fontWeight: 500 }}>Returned</td>
+                              <td style={{ padding: "10px", color: "#267326", fontWeight: 500 }}> 
+                                <span style={{fontSize: "13.5px",
+                                  padding: "4px 10px",
+                                  backgroundColor: '#26732620',
+                                  borderRadius: "5px",
+                                  display: "inline-block",
+                                  }}>Returned
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

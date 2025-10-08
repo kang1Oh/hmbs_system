@@ -58,6 +58,11 @@ const RequestApprovedAdmin = () => {
   const statusLabel = statusLabels[request?.status_id] || "Unknown";
   const statusColor = statusColors[request?.status_id] || "#FFA500";
 
+  const formatDate = (d) => {
+    const date = new Date(d);
+    return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+  };
+  
   const getSelectStyle = (status) => {
     const colors = {
       Reserved: "#FFA500",
@@ -380,15 +385,19 @@ const RequestApprovedAdmin = () => {
 
         <div style={{ display: "flex", gap: "2rem", marginTop: "2rem", flexWrap: "wrap" }}>
           {[
-            ["Date Requested", request?.date_requested || ""],
-            ["Date Use", request?.lab_date || ""],
-            ["Time", request?.lab_time || ""],
-          ].map(([label, value], i) => (
-            <div key={i} style={{ flex: 1, minWidth: 240 }}>
-              <label style={{ fontWeight: 600 }}>{label}</label>
-              <input style={styles.input} value={value} readOnly />
-            </div>
-          ))}
+            ["Date Requested", request?.date_requested],
+            ["Date Use", request?.lab_date],
+            ["Time", request?.lab_time],
+          ].map(([label, value], i) => {
+            const formattedValue =
+              label.includes("Date") && value ? formatDate(value) : value || "";
+            return (
+              <div key={i} style={{ flex: 1, minWidth: 240 }}>
+                <label style={{ fontWeight: 600 }}>{label}</label>
+                <input style={styles.input} value={formattedValue} readOnly />
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", marginTop: "2rem" }}>

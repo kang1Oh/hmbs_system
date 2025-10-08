@@ -216,7 +216,7 @@ router.get('/search/:role/:name', async (req, res) => {
 
         const ongoingRequestIds = new Set(
           relatedRequests
-            .filter(r => [2, 3, 4].includes(Number(r.status_id)))
+            .filter(r => [1, 2, 3, 4].includes(Number(r.status_id)))
             .map(r => r._id)
         );
 

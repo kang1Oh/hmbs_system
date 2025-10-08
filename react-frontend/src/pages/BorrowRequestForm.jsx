@@ -221,7 +221,7 @@ function BorrowRequestForm() {
         status_id: 1,
         request_slip_id: Math.floor(Math.random() * 90000) + 10000,
         lab_date: dateUse,
-        date_requested: dateRequested,
+        date_requested: new Date().toISOString(),
         lab_time: timeUse,
         subject: subject,
         instructor_id: instructor._id,

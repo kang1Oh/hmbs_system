@@ -225,7 +225,11 @@ const RequestAdminPage = () => {
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.requestId}</td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.name}</td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.subject}</td>
-                      <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.requestDate}</td>
+                      <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>
+                        {item.requestDate
+                          ? new Date(item.requestDate).toISOString().split("T")[0]
+                          : ""}
+                      </td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}><span style={{ ...styles.statusTag, backgroundColor: getStatusColor(item.statusLabel) }}>{item.statusLabel}</span></td>
                     </tr>
                   );
@@ -274,7 +278,11 @@ const RequestAdminPage = () => {
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.requestId}</td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.name}</td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.subject}</td>
-                      <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>{item.requestDate}</td>
+                      <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}>
+                        {item.requestDate
+                          ? new Date(item.requestDate).toISOString().split("T")[0]
+                          : ""}
+                      </td>
                       <td style={{ ...styles.tableCell, borderBottom: isLastRow ? 'none' : '1px solid #E5E7EB' }}><span style={{ ...styles.statusTag, backgroundColor: getStatusColor(item.statusLabel) }}>{item.statusLabel}</span></td>
                     </tr>
                   );
