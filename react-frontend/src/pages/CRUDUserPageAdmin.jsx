@@ -409,7 +409,7 @@ const CRUDUserPageAdmin = () => {
         <div style={styles.groupedSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={styles.sectionTitle}>Students</p>
-            <button style={styles.importBtn} onClick={() => setShowImportCSVModal(true)}>Import CSV File</button>
+            <button style={styles.importBtn} onClick={() => setShowImportCSVModal(true)}>Import CSV</button>
           </div>
           {renderTable(students, styles.studentTableWrapper, studentPage, setStudentPage, 'Student')}
         </div>

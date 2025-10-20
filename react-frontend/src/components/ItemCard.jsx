@@ -25,6 +25,11 @@ function ItemCard({ name, qty, img, onClick }) { //add image prop when available
     fontSize: '17px',
     fontWeight: '600',
     marginBottom: '1px',
+    display: 'block',
+    width: '100%',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
   };
 
   const qtyRowStyle = {

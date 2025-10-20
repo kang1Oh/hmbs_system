@@ -126,29 +126,38 @@ const Sidebar = ({ activePage, navItems, userRole = 'User', userSubrole = 'Admin
           </div>
 
           {/* Bottom Section: User Info and Logout */}
-          <div style={styles.sidebarBottom}>
-            <div style={styles.userInfo}>
-              <FaUserCircle size={30} />
-              <div>
-                <strong>
-                  {localStorage.getItem('user') 
-                    ? JSON.parse(localStorage.getItem('user')).name 
+                <div style={styles.sidebarBottom}>
+                <div style={styles.userInfo}>
+                  <FaUserCircle size={30} />
+                  <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                    display: 'block',
+                    maxWidth: '130px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontWeight: 700,
+                    }}
+                  >
+                    {localStorage.getItem('user')
+                    ? JSON.parse(localStorage.getItem('user')).name
                     : 'User'}
-                </strong>
-                <div style={{ fontSize: '0.85rem' }}>{userSubrole}</div>
+                  </div>
+                  <div style={{ fontSize: '0.85rem' }}>{userSubrole}</div>
+                  </div>
+                </div>
+                <button
+                  style={styles.logoutButton}
+                  onClick={() => setShowLogoutModal(true)}
+                >
+                  <FiLogOut />
+                </button>
+                </div>
               </div>
-            </div>
-            <button
-              style={styles.logoutButton}
-              onClick={() => setShowLogoutModal(true)}
-            >
-              <FiLogOut />
-            </button>
-          </div>
-        </div>
-      </aside>
+              </aside>
 
-      {/* Logout Confirmation Modal */}
+              {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <LogoutModal
           onCancel={() => setShowLogoutModal(false)}
