@@ -112,6 +112,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                     position: "absolute",
                     top: "20px",
                     right: "20px",
+                    zIndex: 10,
                     background: "#991F1F",
                     color: "#fff",
                     border: "none",
@@ -379,7 +380,6 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
     </>
   );
 };
-
 const styles = {
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, fontFamily: "Poppins, sans-serif" },
   modal: { background: "#fff", padding: 30, borderRadius: 16, width: 700, maxHeight: "95vh", overflowY: "auto" },
@@ -395,7 +395,7 @@ const styles = {
   inputFocused: { border: "2px solid #1A1A1A" },
   select: { width: "100%", padding: "12px 40px 12px 16px", border: "0.5px solid #1A1A1A", borderRadius: 7, fontSize: 14, outline: "none", appearance: "none", backgroundColor: "#fff", fontFamily: "Poppins, Sans-serif" },
   selectFocused: { border: "2px solid #000" },
-  uploadBox: { border: "2px dashed #991F1F", borderRadius: 12, padding: "2.5rem 1rem", textAlign: "center", color: "#666", marginTop: 8 },
+  uploadBox: { position: "relative", border: "2px dashed #991F1F", borderRadius: 12, padding: "2.5rem 1rem", textAlign: "center", color: "#666", marginTop: 8 },
   uploadIcon: { width: 40, height: 40, marginBottom: -3 },
   uploadText: { fontSize: "1rem", fontWeight: 530, color: "#2F2F2F", marginBottom: 4 },
   uploadInfo: { fontSize: "0.875rem", color: "#6B7280", marginBottom: 12 },

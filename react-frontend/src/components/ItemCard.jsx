@@ -13,12 +13,22 @@ function ItemCard({ name, qty, img, onClick }) { //add image prop when available
     cursor: 'pointer',
   };
 
-  const cardImageStyle = {
-    width: '100%',
-    height: '200px',
-    objectFit: 'cover',
+  const imageWrapperStyle = {
+    width: '180px',
+    height: '180px',
+    backgroundColor: '#fff', // white background for transparent images
     borderRadius: '8px',
+    overflow: 'hidden', // crop the image to the fixed frame
     marginBottom: '10px',
+    alignSelf: 'center', // keep image centered while other content remains full-width
+    display: 'block',
+  };
+
+  const cardImageStyle = {
+    width: '200px',
+    height: '200px',
+    objectFit: 'cover', // crop to fill the frame
+    display: 'block',
   };
 
   const cardTitleStyle = {
@@ -39,13 +49,18 @@ function ItemCard({ name, qty, img, onClick }) { //add image prop when available
     fontWeight: '300',
   };
 
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const src = img ? `${baseUrl}${img}` : `${baseUrl}uploads/tools/default.png`;
+
   return (
     <div style={cardStyle} onClick={onClick}>
-      {/* Replace with actual image source when available ( <img src={image} alt={name} style={cardImageStyle} />) */}
-      <img 
-        src={`${import.meta.env.VITE_API_BASE_URL}${img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
-        alt={name} 
-        style={cardImageStyle} /> 
+      <div style={imageWrapperStyle}>
+        <img
+          src={src}
+          alt={name}
+          style={cardImageStyle}
+        />
+      </div>
       <p style={cardTitleStyle}>{name}</p>
       <div style={qtyRowStyle}>
         <span>{qty} Available</span>

@@ -5,7 +5,7 @@ const path = require('path');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const router = express.Router();
-const { borrowRequests, groups, borrowItems, users, tools, approvals } = require('../models/db');
+const { borrowRequests, groups, borrowItems, users, tools, approvals, releases, returns } = require('../models/db');
 const { findAsync, findOneAsync } = require('../helpers/dbAsync');
 
 // 🧹 Helper: normalize response with nedb_id included
@@ -335,73 +335,149 @@ router.delete('/:id', (req, res) => {
   });
 });
 
-// Generate PDF slip (unchanged, still relies on _id internally)
-router.post('/:id/generate-pdf', async (req, res) => {
+// Generate Student Copy PDF
+router.post('/:id/generate-pdf-student', async (req, res) => {
   try {
     const requestId = req.params.id;
-
     const request = await findOneAsync(borrowRequests, { _id: requestId });
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    // Groups
     const members = await findAsync(groups, { request_id: request._id });
-    const leader = members.find((m) => m.is_leader);
-
+    const leader = members.find(m => m.is_leader);
     const leaderUser = leader ? await findOneAsync(users, { _id: leader.user_id }) : null;
     const memberUsers = await Promise.all(
-      members
-        .filter((m) => !m.is_leader)
-        .map((m) => findOneAsync(users, { _id: m.user_id }))
+      members.filter(m => !m.is_leader).map(m => findOneAsync(users, { _id: m.user_id }))
     );
-
-    //Instructor
     const instructorUser = await findOneAsync(users, { _id: request.instructor_id });
-
-    // Request Items
     const reqItems = await findAsync(borrowItems, { request_id: request._id });
-    const fullItems = await Promise.all(
-      reqItems.map((ri) => findOneAsync(tools, { tool_id: ri.tool_id }))
-    );
+    const fullItems = await Promise.all(reqItems.map(ri => findOneAsync(tools, { tool_id: ri.tool_id })));
+    const custodian = await findOneAsync(users, { role_id: 1 });
+    const programHead = await findOneAsync(users, { role_id: 3 });
 
-    const pdfPath = path.resolve(`./pdf/borrow_slip_${request.request_slip_id}.pdf`);
-    console.log("PDF path:", pdfPath);
-
+    const pdfPath = path.resolve(`./pdf/borrow_slip_student_${request.request_slip_id}.pdf`);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
-
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     doc.pipe(fs.createWriteStream(pdfPath));
+    doc.font('Times-Roman');
 
     // Header
-    doc.fontSize(18).text('Borrow Request Slip', { align: 'center' });
+    doc.fontSize(10).text('Student’s Copy', { align: 'right' });
     doc.moveDown();
+    doc.text('Republic of the Philippines', { align: 'center' });
+    doc.text('University of Southeastern Philippines', { align: 'center' });
+    doc.text('COLLEGE OF BUSINESS ADMINISTRATION', { align: 'center' });
+    doc.text('Obrero, Davao City', { align: 'center' });
+    doc.text('HOSPITALITY MANAGEMENT DEPARTMENT', { align: 'center' });
+    doc.moveDown(2);
+    doc.fontSize(14).text('LABORATORY REQUISITION FORM', { align: 'center', underline: true });
+    doc.moveDown(1.5);
 
-    // Request info
-    doc.fontSize(12).text(`Slip ID: ${request.request_slip_id}`);
-    doc.text(`Subject: ${request.subject}`);
-    doc.text(`Instructor: ${instructorUser ? instructorUser.name : '(Not Found)'}`);
-    doc.text(`Date Requested: ${request.date_requested}`);
-    doc.text(`Date Use: ${request.lab_date} ${request.lab_time}`);
-    doc.moveDown();
+    // Body text
+    doc.fontSize(12);
+    const bodyLeft = 70; // match footer colLeft
+    const rightMargin = 70;
+    const bodyWidth = doc.page.width - bodyLeft - rightMargin;
 
-    // Group info
-    doc.text(`Group Leader: ${leaderUser ? leaderUser.name : '(Not Found)'}`);
-    doc.text('Group Members:');
-    memberUsers.forEach((m, idx) => {
-      doc.text(`  ${idx + 1}. ${m ? m.name : '(Not Found)'}`);
+    const dateRequested = request.date_requested
+      ? new Date(request.date_requested).toISOString().split('T')[0]
+      : '';
+    doc.text(
+      `Date Requested: ${dateRequested}    Date Use: ${request.lab_date || ''}    Time: ${request.lab_time || ''}`,
+      bodyLeft,
+      doc.y,
+      { width: bodyWidth }
+    );
+    doc.moveDown(0.7);
+    doc.text(`Subject: ${request.subject || ''}`, bodyLeft, doc.y, { width: bodyWidth });
+    doc.moveDown(0.7);
+    doc.text(`Group Leader: ${leaderUser ? leaderUser.name : ''}`, bodyLeft, doc.y, { width: bodyWidth });
+    doc.moveDown(0.7);
+    doc.text('Group Members:', bodyLeft, doc.y, { width: bodyWidth });
+    memberUsers.forEach((m, i) =>
+      doc.text(`   ${i + 1}. ${m ? m.name : ''}`, bodyLeft + 10, doc.y, { width: bodyWidth - 10 })
+    );
+    doc.moveDown(1.2);
+
+    // Items Table
+    const startX = 70;
+    let y = doc.y;
+    const col1 = 70;
+    const col2 = 160;
+    const tableWidth = 450;
+    const rowHeight = 20;
+
+    doc.rect(startX, y, tableWidth, rowHeight).stroke();
+    doc.text('QUANTITY', col1 + 10, y + 5);
+    doc.text('DESCRIPTION', col2 + 10, y + 5);
+    y += rowHeight;
+
+    reqItems.forEach((ri) => {
+      const it = fullItems.find(f => f && f.tool_id === ri.tool_id);
+      doc.rect(startX, y, tableWidth, rowHeight).stroke();
+      doc.text(String(ri.requested_qty || ''), col1 + 10, y + 5);
+      doc.text(it ? it.name : '', col2 + 10, y + 5);
+      y += rowHeight;
     });
 
-    // Items
-    doc.moveDown().text('Borrowed Items:');
-    reqItems.forEach((ri, idx) => {
-      const it = fullItems.find((f) => f && f.tool_id === ri.tool_id);
-      doc.text(`  ${idx + 1}. ${it ? it.name : '(Not Found)'} - Qty: ${ri.requested_qty}`);
-    });
+    // Footer
+    doc.moveDown(3);
+    const footerTop = doc.y + 10;
+    const colLeft = 70;
+    const colRight = 400;
+    doc.fontSize(11);
+
+    // Layout three signature blocks horizontally: Program Head (left), Custodian (center), Instructor (right)
+    const sectionWidth = 160; // width of each signature block
+    const leftX = colLeft; // 70
+    const centerX = (doc.page.width - sectionWidth) / 2;
+    const rightX = colRight; // 400
+    const lineY = footerTop + 12; // y for signature line
+
+    // layout adjustments: program head center, custodian left, instructor right
+    const signLineWidth = 120; // shorter signature lines so they don't intersect
+    const nameY = lineY - 18; // place names above the signature line
+    const titleY = lineY + 8; // titles below the signature line
+
+    // Custodian (last)
+    const custName = custodian ? custodian.name : 'Laboratory in Charge';
+    const custX = rightX;
+    const custLineStart = custX + (sectionWidth - signLineWidth) / 2;
+    doc.text(custName, custX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(custLineStart, lineY).lineTo(custLineStart + signLineWidth, lineY).stroke();
+    doc.text('Laboratory in Charge', custX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Program Head (center)
+    const phName = programHead ? programHead.name : 'Program Head - BSHM';
+    const phX = centerX;
+    const phLineStart = phX + (sectionWidth - signLineWidth) / 2;
+    doc.text(phName, phX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(phLineStart, lineY).lineTo(phLineStart + signLineWidth, lineY).stroke();
+    doc.text('Program Head – BSHM', phX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Instructor (first)
+    const instrName = instructorUser ? instructorUser.name : 'Instructor';
+    const instrX = leftX;
+    const instrLineStart = instrX + (sectionWidth - signLineWidth) / 2;
+    doc.text(instrName, instrX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(instrLineStart, lineY).lineTo(instrLineStart + signLineWidth, lineY).stroke();
+    doc.text('Name of Instructor', instrX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Received / Returned — same baseline, Received on the right (first), Returned on the left (second)
+    const rrY = lineY + 60; // place below signature lines
+    const sigWidth = sectionWidth;
+
+    // Received (right) — draw line then label centered under it
+    doc.moveTo(rightX, rrY).lineTo(rightX + sigWidth, rrY).stroke();
+    doc.text('Received by:', rightX, rrY + 6, { width: sigWidth, align: 'center' });
+
+    // Returned (left) — draw line then label centered under it
+    doc.moveTo(leftX, rrY).lineTo(leftX + sigWidth, rrY).stroke();
+    doc.text('Returned by:', leftX, rrY + 6, { width: sigWidth, align: 'center' });
 
     doc.end();
-
-    res.json({ message: 'PDF generated successfully', path: pdfPath });
+    res.json({ message: 'Student copy generated', path: pdfPath });
   } catch (err) {
-    console.error("❌ PDF generation failed:", err);
+    console.error('PDF generation failed:', err);
     res.status(500).json({ error: err.message });
   }
 });

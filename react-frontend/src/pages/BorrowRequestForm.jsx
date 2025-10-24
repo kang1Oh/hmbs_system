@@ -253,7 +253,7 @@ function BorrowRequestForm() {
       );
 
       // generate PDF
-      await axios.post(`/api/borrow-requests/${newRequest._id}/generate-pdf`);
+      await axios.post(`/api/borrow-requests/${newRequest._id}/generate-pdf-student`);
 
       // clear state
       clearCart();

@@ -1,10 +1,10 @@
-user_id,role_id,email,password,name,active,createdAt,_id
-1,1,admin@hmbs.com,admin123,John Smith,TRUE,2025-10-07T21:41:43.260Z,yn8TADS2Q9Z3yCsq
-2,2,instructor1@hmbs.com,staff201,Jane Doe,TRUE,2025-10-07T21:41:43.277Z,FBFXMjnYnlE7rMyf
-3,2,instructor2@hmbs.com,staff202,Robert Brown,TRUE,2025-10-07T21:41:43.286Z,DtGOwf8xpGjOmMMU
-4,3,programhead2@hmbs.com,staff302,Linda Davis,TRUE,2025-10-07T21:41:43.300Z,ciusWDRiORbA6gR3
-5,4,student1@hmbs.com,student401,Chris Lee,TRUE,2025-10-07T21:41:43.308Z,iSlkCuYGNE4gopBt
-6,4,student2@hmbs.com,student402,Emily Clark,TRUE,2025-10-07T21:41:43.316Z,LymveOPJcnco7pq1
-7,4,student3@hmbs.com,student403,David Wilson,TRUE,2025-10-07T21:41:43.324Z,j817SsrmwEQCmJ8X
-8,4,student4@hmbs.com,student404,Sarah Martinez,TRUE,2025-10-07T21:41:43.332Z,KK7VACVptP3fyAJe
-9,4,student5@hmbs.com,student405,James Taylor,TRUE,2025-10-07T21:41:43.340Z,zMb6qBmlxj8DX3my
+"user_id","role_id","email","password","name","active","createdAt","_id"
+1,1,"admin@hmbs.com","admin123","John Smith",true,"2025-10-24T18:55:19.914Z","yn8TADS2Q9Z3yCsq"
+2,2,"instructor1@hmbs.com","staff201","Jane Doe",true,"2025-10-24T18:55:19.930Z","FBFXMjnYnlE7rMyf"
+3,2,"instructor2@hmbs.com","staff202","Robert Brown",true,"2025-10-24T18:55:19.939Z","DtGOwf8xpGjOmMMU"
+4,3,"programhead2@hmbs.com","staff302","Linda Davis",true,"2025-10-24T18:55:19.947Z","ciusWDRiORbA6gR3"
+5,4,"student1@hmbs.com","student401","Chris Lee",true,"2025-10-24T18:55:19.956Z","iSlkCuYGNE4gopBt"
+6,4,"student2@hmbs.com","student402","Emily Clark",true,"2025-10-24T18:55:19.964Z","LymveOPJcnco7pq1"
+7,4,"student3@hmbs.com","student403","David Wilson",true,"2025-10-24T18:55:19.972Z","j817SsrmwEQCmJ8X"
+8,4,"student4@hmbs.com","student404","Sarah Martinez",true,"2025-10-24T18:55:19.981Z","KK7VACVptP3fyAJe"
+9,4,"student5@hmbs.com","student405","James Taylor",true,"2025-10-24T18:55:19.988Z","zMb6qBmlxj8DX3my"

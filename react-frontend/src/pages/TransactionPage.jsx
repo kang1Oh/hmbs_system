@@ -410,7 +410,7 @@ function TransactionPage() {
                       if (activeRequest.status_id === 1) return;
 
                       const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
-                      const fileUrl = `${baseUrl}/pdf/borrow_slip_${activeRequest.request_slip_id}.pdf`;
+                      const fileUrl = `${baseUrl}/pdf/borrow_slip_student_${activeRequest.request_slip_id}.pdf`;
                       window.open(fileUrl, "_blank"); // opens in new tab (downloadable/viewable)
                     }}
                   >
@@ -429,18 +429,18 @@ function TransactionPage() {
                 }}
               >
                 {/* ✅ Request Details */}
-                <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
-                  <div style={{ flex: "1 1 45%" }}>
-                    <p><strong>Date Requested:</strong> {activeRequest.date_requested}</p>
-                    <p><strong>Date Use:</strong> {activeRequest.lab_date}</p>
-                    <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
-                    <p><strong>Subject:</strong> {activeRequest.subject}</p>
-                    <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
-                  </div>
-                  <div style={{ flex: "1 1 45%" }}>
-                    {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
-                      <div >
-                        {(() => {
+                        <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
+                          <div style={{ flex: "1 1 45%" }}>
+                          <p><strong>Date Requested:</strong> {activeRequest.date_requested ? new Date(activeRequest.date_requested).toISOString().split('T')[0] : ''}</p>
+                          <p><strong>Date Use:</strong> {activeRequest.lab_date}</p>
+                          <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
+                          <p><strong>Subject:</strong> {activeRequest.subject}</p>
+                          <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
+                          </div>
+                          <div style={{ flex: "1 1 45%" }}>
+                          {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
+                            <div >
+                            {(() => {
                           const leader = activeRequest.groupMembers.find(gm => gm.is_leader);
                           const members = activeRequest.groupMembers.filter(gm => !gm.is_leader);
 
@@ -571,44 +571,44 @@ function TransactionPage() {
           </div>
 
           {/* Transaction History */}
-          <div style={{ ...cardStyle, padding: '25px', marginBottom: '60px' }}>
-            <div style={{ marginBottom: '10px' }}>
-              <div style={{ fontSize: '19px', fontWeight: 600 }}>Transaction History</div>
-              <div style={{ fontSize: '15px', color: '#777', margin: '-4px 0 12px' }}>Track completed equipment transactions</div>
-            </div>
+                <div style={{ ...cardStyle, padding: '25px', marginBottom: '60px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '19px', fontWeight: 600 }}>Transaction History</div>
+                  <div style={{ fontSize: '15px', color: '#777', margin: '-4px 0 12px' }}>Track completed equipment transactions</div>
+                </div>
 
-            {historyRequests.map((req, index) => (
-              <div
-                key={req._id}
-                style={{
-                  border: "0.5px solid #ccc",
-                  borderRadius: "10px",
-                  marginBottom: "12px",
-                  padding: "15px 16px",
-                  backgroundColor: "rgba(255,255,255,0.8)",
-                }}
-              >
-                <div
-                  onClick={() => toggleExpand(index)}
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                >
-                  <div>
+                {historyRequests.map((req, index) => (
+                  <div
+                  key={req._id}
+                  style={{
+                    border: "0.5px solid #ccc",
+                    borderRadius: "10px",
+                    marginBottom: "12px",
+                    padding: "15px 16px",
+                    backgroundColor: "rgba(255,255,255,0.8)",
+                  }}
+                  >
+                  <div
+                    onClick={() => toggleExpand(index)}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                  >
+                    <div>
                     <strong>Completed Borrowed Request</strong>
                     <div style={{ fontSize: "13px", color: "#777" }}>
                       Request No. {req.request_slip_id}
                     </div>
-                  </div>
-                  <FaChevronDown
+                    </div>
+                    <FaChevronDown
                     style={{
                       color: "#991F1F",
                       transform: expandedIndex === index ? "rotate(180deg)" : "rotate(0deg)",
                       transition: "transform 0.2s ease",
                     }}
-                  />
-                </div>
+                    />
+                  </div>
 
-                {expandedIndex === index && (
-                  <div
+                  {expandedIndex === index && (
+                    <div
                     style={{
                       marginTop: "16px",
                       padding: "20px",
@@ -619,19 +619,19 @@ function TransactionPage() {
                       color: "#333",
                       lineHeight: 1.6,
                     }}
-                  >
+                    >
                     <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px" }}>
                       <div style={{ flex: "1 1 45%" }}>
-                        <p><strong>Date Requested:</strong> {req.date_requested}</p>
-                        <p><strong>Date Use:</strong> {req.lab_date}</p>
-                        <p><strong>Time Use:</strong> {req.lab_time}</p>
-                        <p><strong>Subject:</strong> {req.subject}</p>
-                        <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
+                      <p><strong>Date Requested:</strong> {req.date_requested ? new Date(req.date_requested).toISOString().split('T')[0] : ''}</p>
+                      <p><strong>Date Use:</strong> {req.lab_date}</p>
+                      <p><strong>Time Use:</strong> {req.lab_time}</p>
+                      <p><strong>Subject:</strong> {req.subject}</p>
+                      <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
                       </div>
                       <div style={{ flex: "1 1 45%" }}>
-                        {req.groupMembers && req.groupMembers.length > 0 && (
-                          <div>
-                            {(() => {
+                      {req.groupMembers && req.groupMembers.length > 0 && (
+                        <div>
+                        {(() => {
                               const leader = req.groupMembers.find(gm => gm.is_leader);
                               const members = req.groupMembers.filter(gm => !gm.is_leader);
 

@@ -220,7 +220,15 @@ function CartPage() {
                 <div style={itemInfoSection}>
                   <div style={itemDetails}>
                     <div style={itemName}>{item.name}</div>
-                    <div style={itemPrice}>₱{item.price.toFixed(2)}</div>
+                    <div style={itemPrice}>
+                      ₱{
+                        (() => {
+                          const cleaned = String(item.price).replace(/[^0-9.-]+/g, '');
+                          const priceNum = parseFloat(cleaned);
+                          return Number.isFinite(priceNum) ? priceNum.toFixed(2) : '0.00';
+                        })()
+                      }
+                    </div>
                   </div>
                   <div style={qtyControls}>
                     <div
