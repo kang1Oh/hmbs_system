@@ -362,12 +362,25 @@ const RequestDetailsAdmin = () => {
           </tbody>
         </table>
 
-        {!approvalExists && (
+        {requestStatus === 5 ? (
+          <div style={styles.actionButtons}>
+            <button
+              style={styles.approveButton}
+              onClick={() => {
+                const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
+                const fileUrl = `${baseUrl}/pdf/borrow_slip_custodian_${request.request_slip_id}.pdf`;
+                window.open(fileUrl, "_blank"); // opens in new tab (downloadable/viewable)
+              }}
+            >
+              Export PDF Slip
+            </button>
+          </div>
+        ) : !approvalExists ? (
           <div style={styles.actionButtons}>
             <button className="reject-btn" style={styles.rejectButton} onClick={() => setShowRejectModal(true)}>Reject Request</button>
             <button className="approve-btn" style={styles.approveButton} onClick={handleApprove}>Approve Request</button>
           </div>
-        )}
+        ) : null}
       </main>
 
       {showRejectModal && (

@@ -382,7 +382,7 @@ router.post('/:id/generate-pdf-student', async (req, res) => {
       ? new Date(request.date_requested).toISOString().split('T')[0]
       : '';
     doc.text(
-      `Date Requested: ${dateRequested}    Date Use: ${request.lab_date || ''}    Time: ${request.lab_time || ''}`,
+      `Date Requested: ${dateRequested}        Date Use: ${request.lab_date || ''}        Time: ${request.lab_time || ''}`,
       bodyLeft,
       doc.y,
       { width: bodyWidth }
@@ -466,16 +466,207 @@ router.post('/:id/generate-pdf-student', async (req, res) => {
     const rrY = lineY + 60; // place below signature lines
     const sigWidth = sectionWidth;
 
-    // Received (right) — draw line then label centered under it
+    // Returned (right) — draw line then label centered under it
     doc.moveTo(rightX, rrY).lineTo(rightX + sigWidth, rrY).stroke();
-    doc.text('Received by:', rightX, rrY + 6, { width: sigWidth, align: 'center' });
+    doc.text('Returned by:', rightX, rrY + 6, { width: sigWidth, align: 'center' });
 
-    // Returned (left) — draw line then label centered under it
+    // Received (left) — draw line then label centered under it
     doc.moveTo(leftX, rrY).lineTo(leftX + sigWidth, rrY).stroke();
-    doc.text('Returned by:', leftX, rrY + 6, { width: sigWidth, align: 'center' });
+    doc.text('Received by:', leftX, rrY + 6, { width: sigWidth, align: 'center' });
 
     doc.end();
     res.json({ message: 'Student copy generated', path: pdfPath });
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate Custodian Copy PDF
+router.post('/:id/generate-pdf-custodian', async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const request = await findOneAsync(borrowRequests, { _id: requestId });
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+
+    // Fetch related data
+    const members = await findAsync(groups, { request_id: request._id });
+    const leader = members.find(m => m.is_leader);
+    const leaderUser = leader ? await findOneAsync(users, { _id: leader.user_id }) : null;
+    const memberUsers = await Promise.all(
+      members.filter(m => !m.is_leader).map(m => findOneAsync(users, { _id: m.user_id }))
+    );
+    const instructorUser = await findOneAsync(users, { _id: request.instructor_id });
+    const reqItems = await findAsync(borrowItems, { request_id: request._id });
+    const fullItems = await Promise.all(reqItems.map(ri => findOneAsync(tools, { tool_id: ri.tool_id })));
+
+    const releaseData = await findOneAsync(releases, { request_id: request._id });
+    const returnData = await findAsync(returns, { request_id: request._id });
+
+    const custodian = await findOneAsync(users, { role_id: 1 });
+    const programHead = await findOneAsync(users, { role_id: 3 });
+
+    const pdfPath = path.resolve(`./pdf/borrow_slip_custodian_${request.request_slip_id}.pdf`);
+    fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
+    const doc = new PDFDocument({ margin: 50 });
+    doc.pipe(fs.createWriteStream(pdfPath));
+    doc.font('Times-Roman');
+
+    // Header
+    doc.fontSize(10).text('Custodian’s Copy', { align: 'right' });
+    doc.moveDown();
+    doc.text('Republic of the Philippines', { align: 'center' });
+    doc.text('University of Southeastern Philippines', { align: 'center' });
+    doc.text('COLLEGE OF BUSINESS ADMINISTRATION', { align: 'center' });
+    doc.text('Obrero, Davao City', { align: 'center' });
+    doc.text('HOSPITALITY MANAGEMENT DEPARTMENT', { align: 'center' });
+    doc.moveDown(2);
+    doc.fontSize(14).text('LABORATORY REQUISITION FORM', { align: 'center', underline: true });
+    doc.moveDown(1.5);
+
+    // Body text
+    doc.fontSize(12);
+    const bodyLeft = 70;
+    const rightMargin = 70;
+    const bodyWidth = doc.page.width - bodyLeft - rightMargin;
+
+    const dateRequested = request.date_requested
+      ? new Date(request.date_requested).toISOString().split('T')[0]
+      : '';
+    doc.text(
+      `Date Requested: ${dateRequested}        Date Use: ${request.lab_date || ''}        Time: ${request.lab_time || ''}`,
+      bodyLeft,
+      doc.y,
+      { width: bodyWidth }
+    );
+    doc.moveDown(0.7);
+    doc.text(`Subject: ${request.subject || ''}`, bodyLeft, doc.y, { width: bodyWidth });
+    doc.moveDown(0.7);
+    doc.text(`Group Leader: ${leaderUser ? leaderUser.name : ''}`, bodyLeft, doc.y, { width: bodyWidth });
+    doc.moveDown(0.7);
+    doc.text('Group Members:', bodyLeft, doc.y, { width: bodyWidth });
+    memberUsers.forEach((m, i) =>
+      doc.text(`   ${i + 1}. ${m ? m.name : ''}`, bodyLeft + 10, doc.y, { width: bodyWidth - 10 })
+    );
+    doc.moveDown(1.2);
+
+    // Items Table
+    const startX = 70;
+    let y = doc.y;
+    const colQty = 70;
+    const colDesc = 130;
+    const colOut = 340;
+    const colIn = 400;
+    const colRemarks = 460;
+    const tableWidth = 500;
+    const rowHeight = 20;
+
+    // Header row
+    doc.rect(startX, y, tableWidth, rowHeight).stroke();
+    doc.fontSize(10).text('QUANTITY', colQty + 5, y + 5);
+    doc.fontSize(10).text('DESCRIPTION', colDesc + 5, y + 5);
+    doc.fontSize(10).text('OUT', colOut + 5, y + 5);
+    doc.fontSize(10).text('IN', colIn + 5, y + 5);
+    doc.fontSize(10).text('REMARKS', colRemarks + 5, y + 5);
+    y += rowHeight;
+
+    // Data rows with wrapping and remarks fix
+    reqItems.forEach((ri) => {
+      const it = fullItems.find(f => f && f.tool_id == ri.tool_id); // loose equals to handle string/number mismatch
+      const ret = returnData.find(r => r.tool_id == ri.tool_id || r.tool_id == ri.tool_id);
+
+      const outValue = releaseData && releaseData.release_date
+      ? new Date(releaseData.release_date).toISOString().split('T')[0]
+      : '';
+      const inValue = ret && ret.return_date
+      ? new Date(ret.return_date).toISOString().split('T')[0]
+      : '';
+      // prefer return remark, fall back to item/request remark if any
+      const remarksValue = (ret && (ret.remarks || '')) || (ri.remarks || '');
+
+      // compute widths for wrapping so text doesn't overflow into next column
+      const tableEndX = startX + tableWidth;
+      const descWidth = Math.max(50, colOut - colDesc - 10); // ensure some minimum
+      const remarksWidth = Math.max(50, tableEndX - colRemarks - 10);
+
+      doc.fontSize(10);
+      // measure heights for wrapped text
+      const qtyText = String(ri.requested_qty || '');
+      const descText = it ? it.name : '';
+      const outText = outValue;
+      const inText = inValue;
+      const remarksText = remarksValue;
+
+      const descHeight = doc.heightOfString(descText, { width: descWidth });
+      const remarksHeight = doc.heightOfString(remarksText, { width: remarksWidth });
+      const qtyHeight = doc.heightOfString(qtyText, { width: colDesc - colQty - 10 });
+      const outHeight = doc.heightOfString(outText, { width: colIn - colOut - 10 });
+      const inHeight = doc.heightOfString(inText, { width: colRemarks - colIn - 10 });
+
+      const cellPadding = 10;
+      const computedRowHeight = Math.max(rowHeight, descHeight, remarksHeight, qtyHeight, outHeight, inHeight) + cellPadding;
+
+      // draw row box using computed height
+      doc.rect(startX, y, tableWidth, computedRowHeight).stroke();
+
+      // write texts with wrapping within their column widths
+      doc.text(qtyText, colQty + 5, y + 5, { width: colDesc - colQty - 10 });
+      doc.text(descText, colDesc + 5, y + 5, { width: descWidth });
+      doc.text(outText, colOut + 5, y + 5, { width: colIn - colOut - 10 });
+      doc.text(inText, colIn + 5, y + 5, { width: colRemarks - colIn - 10 });
+      doc.text(remarksText, colRemarks + 5, y + 5, { width: remarksWidth });
+
+      y += computedRowHeight;
+    });
+
+    // Footer 
+    doc.moveDown(3);
+    const footerTop = doc.y + 10;
+    const colLeft = 70;
+    const colRight = 400;
+    doc.fontSize(11);
+
+    const sectionWidth = 160;
+    const leftX = colLeft;
+    const centerX = (doc.page.width - sectionWidth) / 2;
+    const rightX = colRight;
+    const lineY = footerTop + 12;
+    const signLineWidth = 120;
+    const nameY = lineY - 18;
+    const titleY = lineY + 8;
+
+    // Custodian
+    const custName = custodian ? custodian.name : 'Laboratory in Charge';
+    const custLineStart = rightX + (sectionWidth - signLineWidth) / 2;
+    doc.text(custName, rightX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(custLineStart, lineY).lineTo(custLineStart + signLineWidth, lineY).stroke();
+    doc.text('Laboratory in Charge', rightX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Program Head
+    const phName = programHead ? programHead.name : 'Program Head - BSHM';
+    const phLineStart = centerX + (sectionWidth - signLineWidth) / 2;
+    doc.text(phName, centerX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(phLineStart, lineY).lineTo(phLineStart + signLineWidth, lineY).stroke();
+    doc.text('Program Head – BSHM', centerX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Instructor
+    const instrName = instructorUser ? instructorUser.name : 'Instructor';
+    const instrLineStart = leftX + (sectionWidth - signLineWidth) / 2;
+    doc.text(instrName, leftX, nameY, { width: sectionWidth, align: 'center' });
+    doc.moveTo(instrLineStart, lineY).lineTo(instrLineStart + signLineWidth, lineY).stroke();
+    doc.text('Name of Instructor', leftX, titleY, { width: sectionWidth, align: 'center' });
+
+    // Received / Returned
+    const rrY = lineY + 60;
+    const sigWidth = sectionWidth;
+    doc.moveTo(leftX, rrY).lineTo(leftX + sigWidth, rrY).stroke();
+    doc.text('Received by:', leftX, rrY + 6, { width: sigWidth, align: 'center' });
+
+    doc.moveTo(rightX, rrY).lineTo(rightX + sigWidth, rrY).stroke();
+    doc.text('Returned by:', rightX, rrY + 6, { width: sigWidth, align: 'center' });
+
+    doc.end();
+    res.json({ message: 'Custodian copy generated', path: pdfPath });
   } catch (err) {
     console.error('PDF generation failed:', err);
     res.status(500).json({ error: err.message });

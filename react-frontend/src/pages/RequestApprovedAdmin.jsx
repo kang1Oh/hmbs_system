@@ -313,6 +313,7 @@ const RequestApprovedAdmin = () => {
     if (!allReturnedGood || !request) return;
     try {
       await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 5 });
+      await axios.post(`/api/borrow-requests/${request._id}/generate-pdf-custodian`);
       setRequest((r) => ({ ...r, status_id: 5 }));
       setShowModal(true);
     } catch (err) {
