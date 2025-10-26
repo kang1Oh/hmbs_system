@@ -195,7 +195,6 @@ const RequestInstructorPage = () => {
           <div style={styles.legend}>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#2D9CDB' }}></span> New Request</div>
             <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#f29544ff' }}></span> Approved & Forwarded Request</div>
-            <div style={styles.legendItem}><span style={{ ...styles.legendCircle, backgroundColor: '#DC2626' }}></span> Denied Request</div>
           </div>
         </div>
         <div style={styles.headerRow}>

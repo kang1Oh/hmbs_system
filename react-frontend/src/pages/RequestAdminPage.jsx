@@ -121,7 +121,7 @@ const RequestAdminPage = () => {
     narrowHeaderCell: { padding: '0 25px 0 18px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', fontWeight:'100' },
     narrowCell: { padding: '0px 26px 0 16px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'transparent' },
     statusTag: { width: '115px', height: '32px', lineHeight: '30px', textAlign: 'center', borderRadius: '99px', color: '#fff', fontSize: '14px', display: 'inline-block' },
-    exportBtn: { background: '#991f1f', border: '1px solid #991f1f', borderRadius: '999px', padding: '8px 25px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '14px', fontWeight: 500, marginBottom: '12px', fontFamily: 'Poppins, sans-serif' },
+    deleteDeniedReqsBtn: { background: '#991f1f', border: '1px solid #991f1f', borderRadius: '999px', padding: '8px 25px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '14px', fontWeight: 500, marginBottom: '12px', fontFamily: 'Poppins, sans-serif' },
     showingWrapper: { display: 'flex', justifyContent: 'center', marginTop: '12px', marginBottom: '-10px' },
     showingText: { fontSize: '15px', color: '#333' },
     paginationContainer: { display: 'flex', justifyContent: 'center', marginTop: '2rem', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontFamily: 'Poppins, sans-serif' },
@@ -181,22 +181,46 @@ const RequestAdminPage = () => {
               <h3 style={{ marginBottom: '-4px', fontSize: '22px' }}>All Requests</h3>
               <p style={styles.totalRequests}>Total Requests: {filteredAllRequests.length}</p>
             </div>
-            <div style={{ position: 'relative' }} ref={dropdownRef}>
-              <button type="button" style={styles.sortBtn} onClick={() => setDropdownOpen(prev => !prev)} aria-haspopup="true" aria-expanded={dropdownOpen}>
-                {statusFilter}<ChevronDown size={14} style={{ marginLeft: '6px', color: '#991f1f' }} />
-              </button>
-              {dropdownOpen && (
-                <div style={styles.dropdownMenu}>
-                  {dropdownOptions.map(option => (
-                    <div key={option} onClick={() => { setStatusFilter(option); setAllPage(1); setDropdownOpen(false); }}
-                      onMouseEnter={() => setHoveredMenuItem(option)} onMouseLeave={() => setHoveredMenuItem(null)}
-                      style={{ ...styles.dropdownItem, backgroundColor: hoveredMenuItem === option ? '#fafafa' : '#fff', fontWeight: option === statusFilter ? 600 : 400 }}>
-                      {option}
-                    </div>
-                  ))}
-                </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {statusFilter === 'Denied' && (
+                <button
+                  type="button"
+                  style={styles.deleteDeniedReqsBtn}
+                  onClick={async () => {
+                    if (window.confirm('Delete all denied requests? This action cannot be undone.')) {
+                      try {
+                        await axios.delete('/api/borrow-requests/denied/all');
+                        setAllRequests(prev => prev.filter(req => req.status_id !== 6));
+                        alert('All denied requests deleted successfully.');
+                      } catch (err) {
+                        console.error('Error deleting denied requests:', err);
+                        alert('Failed to delete denied requests.');
+                      }
+                    }
+                  }}
+                >
+                  Delete Denied Requests
+                </button>
               )}
+              <div style={{ position: 'relative' }} ref={dropdownRef}>
+                <button type="button" style={styles.sortBtn} onClick={() => setDropdownOpen(prev => !prev)} aria-haspopup="true" aria-expanded={dropdownOpen}>
+                  {statusFilter}<ChevronDown size={14} style={{ marginLeft: '6px', color: '#991f1f' }} />
+                </button>
+                {dropdownOpen && (
+                  <div style={styles.dropdownMenu}>
+                    {dropdownOptions.map(option => (
+                      <div key={option} onClick={() => { setStatusFilter(option); setAllPage(1); setDropdownOpen(false); }}
+                        onMouseEnter={() => setHoveredMenuItem(option)} onMouseLeave={() => setHoveredMenuItem(null)}
+                        style={{ ...styles.dropdownItem, backgroundColor: hoveredMenuItem === option ? '#fafafa' : '#fff', fontWeight: option === statusFilter ? 600 : 400 }}>
+                        {option}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+            
           </div>
           <div style={styles.tableWrapper}>
             <table style={styles.table}>

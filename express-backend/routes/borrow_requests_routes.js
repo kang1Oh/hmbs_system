@@ -327,6 +327,16 @@ router.put('/:id', (req, res) => {
   );
 });
 
+// DELETE all denied requests
+router.delete('/denied/all', (req, res) => {
+  borrowRequests.remove({ status_id: 6 }, { multi: true }, (err, numRemoved) => {
+    if (err) return res.status(500).json({ error: err });
+    if (numRemoved === 0) return res.status(404).json({ message: 'No denied requests found' });
+    res.json({ message: `${numRemoved} denied requests deleted successfully` });
+  });
+});
+
+// DELETE a specific request by ID
 router.delete('/:id', (req, res) => {
   borrowRequests.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
     if (err) return res.status(500).json({ error: err });
