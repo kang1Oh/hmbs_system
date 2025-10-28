@@ -1,8 +1,7 @@
 # HMBS System  
 <h3 align="center">
-**Housekeeping Management Borrowing System for the College of Business Administration**
+Housekeeping Management Borrowing System for the College of Business Administration
 </h3>
----
 
 <p align="center">
   <img src="./react-frontend/src/assets/site-images/hmbs-logo-white.png" alt="HMBS Logo" width="180" />
