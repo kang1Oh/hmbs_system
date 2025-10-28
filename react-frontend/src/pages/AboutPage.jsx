@@ -133,66 +133,6 @@ function AboutPage() {
           </div>
         </div>
 
-        {/* Staff In-Charge Section */}
-        <div style={staffSectionStyle}>
-          <h2 style={staffTitleStyle}>Staff In-Charge</h2>
-          <div style={staffGridStyle}>
-            {/* Staff 1 */}
-            <div style={staffCardStyle}>
-              <img
-                src="https://ui-avatars.com/api/?name=John+Doe&background=861111&color=fff&size=100"
-                alt="John Doe"
-                style={staffImageStyle}
-              />
-              <div style={staffNameStyle}>John Doe</div>
-              <div style={staffPositionStyle}>Lab Supervisor</div>
-            </div>
-
-            {/* Staff 2 */}
-            <div style={staffCardStyle}>
-              <img
-                src="https://ui-avatars.com/api/?name=Jane+Smith&background=861111&color=fff&size=100"
-                alt="Jane Smith"
-                style={staffImageStyle}
-              />
-              <div style={staffNameStyle}>Jane Smith</div>
-              <div style={staffPositionStyle}>Inventory Officer</div>
-            </div>
-
-            {/* Staff 3 */}
-            <div style={staffCardStyle}>
-              <img
-                src="https://ui-avatars.com/api/?name=Maria+Lopez&background=861111&color=fff&size=100"
-                alt="Maria Lopez"
-                style={staffImageStyle}
-              />
-              <div style={staffNameStyle}>Maria Lopez</div>
-              <div style={staffPositionStyle}>Head Instructor</div>
-            </div>
-
-            {/* Staff 4 */}
-            <div style={staffCardStyle}>
-              <img
-                src="https://ui-avatars.com/api/?name=Peter+Cruz&background=861111&color=fff&size=100"
-                alt="Peter Cruz"
-                style={staffImageStyle}
-              />
-              <div style={staffNameStyle}>Peter Cruz</div>
-              <div style={staffPositionStyle}>Assistant Lab Technician</div>
-            </div>
-
-            {/* Staff 5 */}
-            <div style={staffCardStyle}>
-              <img
-                src="https://ui-avatars.com/api/?name=Ella+Santiago&background=861111&color=fff&size=100"
-                alt="Ella Santiago"
-                style={staffImageStyle}
-              />
-              <div style={staffNameStyle}>Ella Santiago</div>
-              <div style={staffPositionStyle}>Borrowing Coordinator</div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <Footer />

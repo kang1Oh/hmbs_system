@@ -72,7 +72,7 @@ function Footer() {
   };
 
   const linkStyle = {
-    color: 'white',
+    color: '#f6c235',
     textDecoration: 'none',
     fontWeight: '400',
     margin: '0 5px',
@@ -95,7 +95,8 @@ function Footer() {
         <p style={secondaryTextStyle}>
           Copyright © 2025. All Rights Reserved.
           <a href="/terms" style={linkStyle}>Terms of Use</a>|
-          <a href="/privacy" style={linkStyle}>Privacy Policy</a>
+          <a href="/privacy" style={linkStyle}>Privacy Policy</a>|
+          <a href="https://github.com/kang1Oh/hmbs_system" style={linkStyle}>Developers</a>
         </p>
       </div>
     </footer>

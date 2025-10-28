@@ -12,7 +12,7 @@ const UserAddedModal = ({ onDone }) => {
         <h2 style={styles.title}>User Registered</h2>
         <p style={styles.message}>The user has been successfully registered</p>
         <button 
-          style={styles.btnStyle} 
+          style={btnStyle} 
           onMouseEnter={handleMouseEnter} 
           onMouseLeave={handleMouseLeave}
           onClick={onDone}>

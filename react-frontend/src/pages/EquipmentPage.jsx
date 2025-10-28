@@ -35,7 +35,12 @@ function EquipmentsPage() {
   // Fetch categories
   useEffect(() => {
     axios.get("/api/categories")
-      .then(res => setCategories(res.data))
+      .then(res => {
+        const sorted = Array.isArray(res.data)
+          ? res.data.slice().sort((a, b) => (a.category_name || '').localeCompare(b.category_name || ''))
+          : [];
+        setCategories(sorted);
+      })
       .catch(err => console.error("Failed to fetch categories:", err))
       .finally(() => setLoadingCategories(false));
   }, []);
