@@ -1,6 +1,7 @@
-# 🧹 HMBS System  
+# HMBS System  
+<h3 align="center">
 **Housekeeping Management Borrowing System for the College of Business Administration**
-
+</h3>
 ---
 
 <p align="center">
