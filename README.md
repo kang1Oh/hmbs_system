@@ -9,14 +9,14 @@ Housekeeping Management Borrowing System for the College of Business Administrat
 
 ---
 
-## 📖 About  
+## About  
 The **Hospitality Management Borrowing System (HMBS)** is a digital tracking platform designed to monitor the **issuance, borrowing, return, and inventory** of kitchen tools and equipment used by Hospitality Management students during laboratory activities.  
 
 This system promotes accountability and professional responsibility among students by ensuring proper handling and timely return of borrowed items.
 
 ---
 
-## 🚀 Features  
+## Features  
 
 ### 👩‍🎓 Student View  
 - Browse the full catalogue of tools and equipment with **search and filter** functions  
@@ -33,17 +33,17 @@ This system promotes accountability and professional responsibility among studen
 
 ---
 
-## 🛠️ Technologies Used  
+## Technologies Used  
 - **Frontend:** React  
 - **Backend:** Express.js with Node.js  
 - **Database:** NeDB (development) → PostgreSQL (production)  
 
 ---
 
-## 👥 Authors & Contributors  
+## Authors & Contributors  
 | Name | Role | Contributions |
 |------|------|----------------|
-| Jane Doe | Project Lead | Systems Analysis, Database Management, Backend Integration |
+| Jane Rose Bandoy | Project Lead | Systems Analysis, Database Management, Backend Integration |
 
 ---
 
