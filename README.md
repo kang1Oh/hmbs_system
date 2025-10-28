@@ -48,8 +48,8 @@ This system promotes accountability and professional responsibility among studen
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Frontend-React-61dafb?logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/Backend-Express.js-000000?logo=express&logoColor=white" />
-  <img src="https://img.shields.io/badge/Runtime-Node.js-339933?logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/Database-NeDB%20→%20PostgreSQL-336791?logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Frontend-React-%23f6c235?logo=react&logoColor=white&labelColor=%23861111" />
+  <img src="https://img.shields.io/badge/Backend-Express.js-%23f6c235?logo=express&logoColor=white&labelColor=%23861111" />
+  <img src="https://img.shields.io/badge/Runtime-Node.js-%23f6c235?logo=node.js&logoColor=white&labelColor=%23861111" />
+  <img src="https://img.shields.io/badge/Database-NeDB%20→%20PostgreSQL-%23f6c235?logo=postgresql&logoColor=white&labelColor=%23861111" />
 </p>
