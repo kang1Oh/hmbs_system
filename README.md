@@ -44,6 +44,7 @@ This system promotes accountability and professional responsibility among studen
 | Name | Role | Contributions |
 |------|------|----------------|
 | Jane Rose Bandoy | Project Lead | Systems Analysis, Database Management, Backend Integration |
+| Avi Grace Abellana |  UI/UX Designer, Front-End Developer| Designed UI and developed front-end pages |
 
 ---
 
