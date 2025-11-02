@@ -113,8 +113,7 @@ const RequestAdminPage = () => {
     sortBtn: { background: 'transparent', border: '1px solid #991f1f', borderRadius: '5px', padding: '0.5rem 0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#991f1f', fontSize: '14px', marginBottom: '12px', fontFamily: 'Poppins, sans-serif', gap: '8px' },
     dropdownMenu: { position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid #991f1f', borderRadius: '6px', boxShadow: '0 6px 18px rgba(0,0,0,0.08)', minWidth: '160px', zIndex: 40, overflow: 'hidden' },
     dropdownItem: { padding: '10px 12px', fontSize: '14px', cursor: 'pointer', color: '#333', userSelect: 'none' },
-    tableWrapper: { borderLeft: '1px solid #991F1F', borderRight: '1px solid #991F1F', borderBottom: '1px solid #991F1F', borderRadius: '14px 14px 10px 10px' },
-    table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'transparent' },
+    table: { width: '100%', borderCollapse: 'separate', borderSpacing: 0, borderLeft: '1px solid #991F1F', borderRight: '1px solid #991F1F', borderBottom: '1px solid #991F1F', borderRadius: '10px', overflow: 'hidden' },
     tableHead: { backgroundColor: '#991f1f', color: '#fff' },
     tableHeaderCell: { padding: '15px 22px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', fontWeight:'100'},
     tableCell: { padding: '10px 5px', fontSize: '16px', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'transparent' },
@@ -222,7 +221,7 @@ const RequestAdminPage = () => {
             </div>
             
           </div>
-          <div style={styles.tableWrapper}>
+          <div>
             <table style={styles.table}>
               <thead style={styles.tableHead}>
                 <tr>
@@ -275,7 +274,7 @@ const RequestAdminPage = () => {
               <p style={styles.totalRequests}>Track completed borrow request transactions</p>
             </div>
           </div>
-          <div style={styles.tableWrapper}>
+          <div>
             <table style={styles.table}>
               <thead style={styles.tableHead}>
                 <tr>

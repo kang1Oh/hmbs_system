@@ -306,6 +306,17 @@ router.post('/', (req, res) => {
   });
 });
 
+// DELETE all denied requests
+router.delete('/denied/all', (req, res) => {
+  borrowRequests.remove({ status_id: 6 }, { multi: true }, (err, numRemoved) => {
+    if (err) return res.status(500).json({ error: err });
+    if (numRemoved === 0) return res.status(404).json({ message: 'No denied requests found' });
+    res.json({ message: `${numRemoved} denied requests deleted successfully` });
+  });
+});
+
+//Moved all routes requiring :id to the bottom to avoid route conflicts
+// GET a specific request by ID
 router.get('/:id', (req, res) => {
   borrowRequests.findOne({ _id: req.params.id }, (err, doc) => {
     if (err) return res.status(500).json({ error: err });
@@ -314,6 +325,7 @@ router.get('/:id', (req, res) => {
   });
 });
 
+// UPDATE a specific request by ID
 router.put('/:id', (req, res) => {
   borrowRequests.update(
     { _id: req.params.id },
@@ -325,15 +337,6 @@ router.put('/:id', (req, res) => {
       res.json({ message: 'Request updated successfully' });
     }
   );
-});
-
-// DELETE all denied requests
-router.delete('/denied/all', (req, res) => {
-  borrowRequests.remove({ status_id: 6 }, { multi: true }, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'No denied requests found' });
-    res.json({ message: `${numRemoved} denied requests deleted successfully` });
-  });
 });
 
 // DELETE a specific request by ID
