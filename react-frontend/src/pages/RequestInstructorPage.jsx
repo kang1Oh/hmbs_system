@@ -24,15 +24,15 @@ const RequestInstructorPage = () => {
 
     const fetchRequests = async () => {
       try {
-        const { data } = await axios.get(`/api/borrow-requests/instructor/${storedUser._id}/new`);
+        const { data } = await axios.get(`/api/borrow-requests/instructor/${storedUser.user_id}/new`);
         
         const enriched = data.map((req) => ({
-          requestId: req.request_slip_id,
+          request_id: req.request_id,
+          request_slip_id: req.request_slip_id,
           name: req.student_name,
           subject: req.subject,
           requestDate: req.date_requested,
-          status: req.status, 
-          _id: req._id, 
+          status: req.status
         }));
 
         setRequests(enriched);
@@ -230,7 +230,7 @@ const RequestInstructorPage = () => {
               return (
                 <tr
                   key={rowIndex}
-                  onClick={() => handleNavigate(req._id)}
+                  onClick={() => handleNavigate(req.request_id)}
                   onMouseEnter={() => setHoveredRowIndex(rowIndex)}
                   onMouseLeave={() => setHoveredRowIndex(null)}
                   style={{
@@ -240,7 +240,7 @@ const RequestInstructorPage = () => {
                   }}
                 >
                   <td style={styles.thtd}>{rowIndex + 1}</td>
-                  <td style={styles.thtd}>{req.requestId}</td>
+                  <td style={styles.thtd}>{req.request_slip_id}</td>
                   <td style={styles.thtd}>{req.name}</td>
                   <td style={styles.thtd}>{req.subject}</td>
                   <td style={styles.thtd}>

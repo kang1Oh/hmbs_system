@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { MdErrorOutline } from 'react-icons/md';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -12,6 +13,51 @@ const AddUserModal = ({ onClose, onRegister }) => {
 
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  // new states for email checking
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+
+  useEffect(() => {
+    // debounce email existence check
+    const email = formData.email ? formData.email.trim() : '';
+    if (!email) {
+      setEmailExists(false);
+      setEmailChecking(false);
+      setErrors((prev) => ({ ...prev, email: prev.email && null }));
+      return;
+    }
+
+    setEmailChecking(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/users/check-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        if (!res.ok) {
+          // on server error, don't block user but clear checker
+          setEmailExists(false);
+          setEmailChecking(false);
+          return;
+        }
+        const data = await res.json();
+        setEmailExists(!!data.exists);
+        if (data.exists) {
+          setErrors((prev) => ({ ...prev, email: 'Email already exists' }));
+        } else {
+          setErrors((prev) => ({ ...prev, email: null }));
+        }
+      } catch (err) {
+        console.error('email check failed', err);
+        setEmailExists(false);
+      } finally {
+        setEmailChecking(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(t);
+  }, [formData.email]);
 
   const validate = () => {
     const newErrors = {};
@@ -19,6 +65,10 @@ const AddUserModal = ({ onClose, onRegister }) => {
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.password.trim()) newErrors.password = 'Password is required';
     if (!formData.role.trim()) newErrors.role = 'User Role is required';
+
+    // block if email exists
+    if (emailExists) newErrors.email = 'Email already exists';
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -33,11 +83,24 @@ const AddUserModal = ({ onClose, onRegister }) => {
     if (errors[name]) {
       setErrors({ ...errors, [name]: null });
     }
+    if (name === 'email') {
+      // optimistic clear, actual check happens in useEffect
+      setEmailExists(false);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    // extra guard: if checking in progress, prevent submit
+    if (emailChecking) {
+      setErrors((prev) => ({ ...prev, email: 'Checking email, please wait' }));
+      return;
+    }
+    if (emailExists) {
+      setErrors((prev) => ({ ...prev, email: 'Email already exists' }));
+      return;
+    }
     onRegister(formData);
     setFormData({
       fullName: '',
@@ -68,17 +131,23 @@ const AddUserModal = ({ onClose, onRegister }) => {
         <span
           onClick={() => setShowPassword((prev) => !prev)}
           style={{
-            position: 'absolute',
-            right: '3rem',
-            top: '60%',
+            position: 'relative',
+            left: '37rem',
+            top: '-25px',
             transform: 'translateY(-50%)',
             cursor: 'pointer',
             color: '#555',
           }}
         >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
         </span>
       )}
+
+      {/* show email-specific small status (checking) */}
+      {name === 'email' && emailChecking && (
+        <div style={{ fontSize: '12px', color: '#666', marginTop: 6 }}>Checking email…</div>
+      )}
+
       {errors[name] && (
         <div style={styles.errorText}>
           <MdErrorOutline style={styles.errorIcon} />
@@ -102,7 +171,7 @@ const AddUserModal = ({ onClose, onRegister }) => {
           {renderInput('Email', 'email', 'email', 'Enter Email')}
           {renderInput('Password', 'password', 'password', 'Enter Password')}
 
-          <div style={styles.inputGroup}>
+          <div style={{...styles.inputGroup, marginTop: '-2rem' }}>
             <label style={styles.label}>
               User Role <span style={styles.asterisk}>*</span>
             </label>

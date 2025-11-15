@@ -5,367 +5,345 @@ const path = require('path');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const router = express.Router();
-const { borrowRequests, groups, borrowItems, users, tools, approvals, releases, returns } = require('../models/db');
-const { findAsync, findOneAsync } = require('../helpers/dbAsync');
+const pool = require('../models/db'); // use pg Pool instead of NeDB
 
-// 🧹 Helper: normalize response with nedb_id included
-function formatRequest(doc) {
-  if (!doc) return null;
+// Helper: format DB rows
+function formatRequest(row) {
+  if (!row) return null;
   return {
-    ...doc,
-    nedb_id: doc._id, // expose NeDB's generated ID
+    ...row,
+    nedb_id: row.nedb_id || null,
   };
 }
 
-router.get('/', (req, res) => {
-  borrowRequests.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs.map(formatRequest));
-  });
-});
-
-// GET all requests for a specific user
-router.get('/user/:user_id', (req, res) => {
-  const userId = parseInt(req.params.user_id);
-  borrowRequests.find({ user_id: userId }, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs.map(formatRequest));
-  });
-});
-
-// GET all borrow requests for a user (direct + group membership, focusing on groups first)
-router.get('/by-group-or-user/:user_id', async (req, res) => {
+// ✅ GET all borrow requests
+router.get('/', async (req, res) => {
   try {
-    const userId = req.params.user_id; 
+    const result = await pool.query('SELECT * FROM borrow_requests ORDER BY request_id DESC');
+    res.json(result.rows.map(formatRequest));
+  } catch (err) {
+    console.error('Error fetching borrow requests:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    // 1. Find all group memberships by user_id (string, matches users._id)
-    const memberships = await new Promise((resolve, reject) => {
-      groups.find({ user_id: userId }, (err, docs) => {
-        if (err) reject(err);
-        else resolve(docs);
-      });
-    });
+// ✅ GET all requests for a specific user
+router.get('/user/:user_id', async (req, res) => {
+  const userId = parseInt(req.params.user_id);
+  try {
+    const result = await pool.query('SELECT * FROM borrow_requests WHERE user_id = $1', [userId]);
+    res.json(result.rows.map(formatRequest));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    // 2. Collect request_ids from group memberships
-    const groupRequestIds = memberships.map(m => m.request_id);
+// ✅ GET all borrow requests by group or direct user
+router.get('/by-group-or-user/:user_id', async (req, res) => {
+  const userId = req.params.user_id;
+  try {
+    // 1. Get all group memberships
+    const memberships = await pool.query('SELECT request_id FROM groups WHERE user_id = $1', [userId]);
+    const groupRequestIds = memberships.rows.map(m => m.request_id);
 
-    let groupRequests = [];
-    if (groupRequestIds.length > 0) {
-      groupRequests = await new Promise((resolve, reject) => {
-        borrowRequests.find({ _id: { $in: groupRequestIds } }, (err, docs) => {
-          if (err) reject(err);
-          else resolve(docs);
-        });
-      });
-    }
+    // 2. Get requests via groups
+    const groupRequests = groupRequestIds.length
+      ? await pool.query('SELECT * FROM borrow_requests WHERE request_id = ANY($1)', [groupRequestIds])
+      : { rows: [] };
 
-    // 3. Also check if user submitted direct requests (numeric ID)
+    // 3. Direct user requests
     const numericId = parseInt(userId, 10);
-    let directRequests = [];
-    if (!isNaN(numericId)) {
-      directRequests = await new Promise((resolve, reject) => {
-        borrowRequests.find({ user_id: numericId }, (err, docs) => {
-          if (err) reject(err);
-          else resolve(docs);
-        });
-      });
-    }
+    const directRequests = !isNaN(numericId)
+      ? await pool.query('SELECT * FROM borrow_requests WHERE user_id = $1', [numericId])
+      : { rows: [] };
 
-    // 4. Merge results (avoid duplicates)
-    const allRequests = [...groupRequests, ...directRequests];
-    const unique = Array.from(new Map(allRequests.map(r => [r._id, r])).values());
+    // 4. Merge + deduplicate
+    const allRequests = [...groupRequests.rows, ...directRequests.rows];
+    const unique = Array.from(new Map(allRequests.map(r => [r.request_id, r])).values());
 
     res.json(unique.map(formatRequest));
   } catch (err) {
-    console.error("Error in by-group-or-user route:", err);
+    console.error('Error in by-group-or-user route:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET new or processed requests for a specific instructor
+// ✅ GET new requests for an instructor (status_id = 1)
 router.get('/instructor/:instructor_id/new', async (req, res) => {
-  const instructorId = req.params.instructor_id;
-
+  const instructorId = parseInt(req.params.instructor_id);
   try {
-    const requests = await new Promise((resolve, reject) => {
-      borrowRequests.find({ instructor_id: instructorId, status_id: 1 }, (err, docs) => {
-        if (err) reject(err);
-        else resolve(docs);
-      });
-    });
-
-    const enriched = await Promise.all(
-      requests.map(async (req) => {
-        // check for approval (approved or rejected)
-        const approval = await new Promise((resolve) => {
-          approvals.findOne(
-            {
-              request_id: req._id,
-              user_id: instructorId,
-              status_id: { $in: [2, 6] },
-            },
-            (err, doc) => resolve(doc || null)
-          );
-        });
-
-        // get student name
-        const student = await new Promise((resolve) => {
-          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
-        });
-
-        // determine label
-        let statusLabel = "New";
-        if (approval) {
-          statusLabel = approval.status_id === 2 ? "Approved" : "Denied";
-        }
-
-        return {
-          ...formatRequest(req),
-          student_name: student ? student.name : "Unknown",
-          status: statusLabel,
-        };
-      })
-    );
-
-    res.json(enriched);
-  } catch (err) {
-    console.error("Error in instructor route:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get('/programhead/new', async (req, res) => {
-  try {
-    res.set('Cache-Control', 'no-store'); // avoid 304 caching
-
-    // Step 1: find requests approved by an instructor
-    const instructorApproved = await new Promise((resolve, reject) => {
-      approvals.find(
-        { role_id: { $in: [2, "2"] }, status_id: { $in: [2, "2"] } },
-        (err, docs) => {
-          if (err) reject(err);
-          else resolve(docs.map((d) => d.request_id));
-        }
-      );
-    });
-
-    // Step 2: find matching borrow requests that are still pending
-    const requests = await new Promise((resolve, reject) => {
-      borrowRequests.find(
-        { _id: { $in: instructorApproved }, status_id: { $in: [1, "1"] } },
-        (err, docs) => {
-          if (err) reject(err);
-          else resolve(docs);
-        }
-      );
-    });
-
-    // Step 3: enrich with student name + program head approval status
-    const enriched = await Promise.all(
-      requests.map(async (req) => {
-        const progApproved = await new Promise((resolve) => {
-          approvals.findOne(
-            { 
-              request_id: req._id, 
-              role_id: { $in: [3, "3"] }, 
-              status_id: { $in: [2, 6, "2", "6"] } 
-            },
-            (err, doc) => resolve(doc || null)
-          );
-        });
-
-        const student = await new Promise((resolve) => {
-          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null));
-        });
-
-        let statusLabel = "New";
-        if (progApproved) {
-          if (progApproved.status_id == 2 || progApproved.status_id === "2") {
-            statusLabel = "Approved";
-          } else if (progApproved.status_id == 6 || progApproved.status_id === "6") {
-            statusLabel = "Denied";
-          }
-        }
-
-        return {
-          request_slip_id: req.request_slip_id,
-          student_name: student ? student.name : "Unknown",
-          subject: req.subject,
-          date_requested: req.date_requested,
-          status: statusLabel,
-          _id: req._id, 
-        };
-      })
-    );
-
-    res.json(enriched);
-  } catch (err) {
-    console.error("Error fetching program head requests:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ✅ GET requests for Admin
-router.get('/for-admin', async (req, res) => {
-  try {
-    const [borrowDocs, approvalDocs] = await Promise.all([
-      new Promise((resolve, reject) =>
-        borrowRequests.find({}, (err, docs) => (err ? reject(err) : resolve(docs)))
-      ),
-      new Promise((resolve, reject) =>
-        approvals.find({}, (err, docs) => (err ? reject(err) : resolve(docs)))
-      ),
-    ]);
-
-    const instructorApproved = new Set(
-      approvalDocs
-        .filter(a => a.role_id == 2 && a.status_id == 2)
-        .map(a => a.request_id)
-    );
-    const progHeadApproved = new Set(
-      approvalDocs
-        .filter(a => a.role_id == 3 && a.status_id == 2)
-        .map(a => a.request_id)
-    );
-    const adminApproved = new Set(
-      approvalDocs
-        .filter(a => a.role_id == 1 && a.status_id == 2)
-        .map(a => a.request_id)
-    );
-
-    const filtered = borrowDocs.filter(req =>
-      instructorApproved.has(req._id) && progHeadApproved.has(req._id) && req.status_id !== 5
+    // find pending requests assigned to instructor
+    const requests = await pool.query(
+      'SELECT * FROM borrow_requests WHERE instructor_id = $1 AND status_id = 1',
+      [instructorId]
     );
 
     const enriched = await Promise.all(
-      filtered.map(async (req) => {
-        const student = await new Promise((resolve) =>
-          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null))
+      requests.rows.map(async (reqRow) => {
+        // approval check
+        const approval = await pool.query(
+          'SELECT * FROM approvals WHERE request_id = $1 AND user_id = $2 AND status_id IN (2,6) LIMIT 1',
+          [reqRow.request_id, instructorId]
         );
 
-        let status = 'New';
-        if (req.status_id === 6) status = 'Denied';
-        else if ([2, 3, 4].includes(req.status_id)) status = 'On-Going';
-        else if ([5].includes(req.status_id)) status = 'Completed';
+        // student info
+        const student = await pool.query('SELECT name FROM users WHERE user_id = $1 LIMIT 1', [reqRow.user_id]);
+
+        let statusLabel = 'New';
+        if (approval.rowCount > 0) {
+          statusLabel = approval.rows[0].status_id === 2 ? 'Approved' : 'Denied';
+        }
 
         return {
-          request_slip_id: req.request_slip_id,
-          student_name: student ? student.name : 'Unknown',
-          subject: req.subject,
-          date_requested: req.date_requested,
-          status,
-          status_id: req.status_id,
-          _id: req._id,
+          ...formatRequest(reqRow),
+          student_name: student.rowCount ? student.rows[0].name : 'Unknown',
+          status: statusLabel,
         };
       })
     );
 
     res.json(enriched);
+  } catch (err) {
+    console.error('Error in instructor route:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ GET new requests for program head review
+router.get('/programhead/new', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+
+    // Requests where instructor (role 2) approved (status 2)
+    const query = `
+      SELECT 
+        br.request_id,
+        br.request_slip_id,
+        br.subject,
+        br.date_requested,
+        u.name AS student_name,
+        CASE
+          WHEN ph.status_id = 2 THEN 'Approved'
+          WHEN ph.status_id = 6 THEN 'Denied'
+          ELSE 'New'
+        END AS status
+      FROM borrow_requests br
+      JOIN approvals ia 
+        ON ia.request_id = br.request_id 
+        AND ia.role_id = 2 
+        AND ia.status_id = 2
+      LEFT JOIN approvals ph 
+        ON ph.request_id = br.request_id 
+        AND ph.role_id = 3
+        AND ph.status_id IN (2,6)
+      JOIN users u 
+        ON u.user_id = br.user_id
+      WHERE br.status_id = 1
+      ORDER BY br.date_requested DESC;
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching program head requests:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ GET requests ready for admin processing
+router.get('/for-admin', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        br.request_id,
+        br.request_slip_id,
+        br.subject,
+        br.date_requested,
+        br.status_id,
+        u.name AS student_name,
+        CASE
+          WHEN br.status_id = 6 THEN 'Denied'
+          WHEN br.status_id IN (2,3,4) THEN 'On-Going'
+          WHEN br.status_id = 5 THEN 'Completed'
+          ELSE 'New'
+        END AS status
+      FROM borrow_requests br
+      JOIN users u ON u.user_id = br.user_id
+      WHERE br.request_id IN (
+        SELECT request_id FROM approvals WHERE role_id = 2 AND status_id = 2
+      )
+      AND br.request_id IN (
+        SELECT request_id FROM approvals WHERE role_id = 3 AND status_id = 2
+      )
+      AND (br.status_id IS DISTINCT FROM 5)
+      ORDER BY br.date_requested DESC;
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows);
   } catch (err) {
     console.error('Error in /for-admin route:', err);
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
 
-// ✅ GET completed requests for Admin
+// ✅ GET completed borrow requests for admin
 router.get('/completed', async (req, res) => {
   try {
-    const borrowDocs = await new Promise((resolve, reject) =>
-      borrowRequests.find({ status_id: 5 }, (err, docs) => (err ? reject(err) : resolve(docs)))
-    );
+    const query = `
+      SELECT 
+        br.request_id,
+        br.request_slip_id,
+        br.subject,
+        br.date_requested,
+        u.name AS student_name,
+        'Completed' AS status
+      FROM borrow_requests br
+      JOIN users u ON u.user_id = br.user_id
+      WHERE br.status_id = 5
+      ORDER BY br.date_requested DESC;
+    `;
 
-    const enriched = await Promise.all(
-      borrowDocs.map(async (req) => {
-        const student = await new Promise((resolve) =>
-          users.findOne({ _id: req.user_id }, (err, doc) => resolve(doc || null))
-        );
-
-        return {
-          request_slip_id: req.request_slip_id,
-          student_name: student ? student.name : 'Unknown',
-          subject: req.subject,
-          date_requested: req.date_requested,
-          status: 'Completed',
-          _id: req._id, 
-        };
-      })
-    );
-
-    res.json(enriched);
+    const result = await pool.query(query);
+    res.json(result.rows);
   } catch (err) {
     console.error('Error in /completed route:', err);
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
 
+// ✅ CREATE a new borrow request
+router.post('/', async (req, res) => {
+  try {
+    const { user_id, status_id, request_slip_id, lab_date, date_requested, lab_time, subject, instructor_id } = req.body;
 
-router.post('/', (req, res) => {
-  borrowRequests.insert(req.body, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(formatRequest(newDoc));
-  });
+    const query = `
+      INSERT INTO borrow_requests (user_id, status_id, request_slip_id, lab_date, date_requested, lab_time, subject, instructor_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *;
+    `;
+    const values = [user_id, status_id, request_slip_id, lab_date, date_requested, lab_time, subject, instructor_id];
+    const result = await pool.query(query, values);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error creating borrow request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE all denied requests
-router.delete('/denied/all', (req, res) => {
-  borrowRequests.remove({ status_id: 6 }, { multi: true }, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'No denied requests found' });
-    res.json({ message: `${numRemoved} denied requests deleted successfully` });
-  });
+// ✅ DELETE all denied requests
+router.delete('/denied/all', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM borrow_requests WHERE status_id = 6 RETURNING *;');
+    if (result.rowCount === 0)
+      return res.status(404).json({ message: 'No denied requests found' });
+
+    res.json({ message: `${result.rowCount} denied requests deleted successfully` });
+  } catch (err) {
+    console.error('Error deleting denied requests:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 //Moved all routes requiring :id to the bottom to avoid route conflicts
-// GET a specific request by ID
-router.get('/:id', (req, res) => {
-  borrowRequests.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Request not found' });
-    res.json(formatRequest(doc));
-  });
+// ✅ GET a specific request by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM borrow_requests WHERE request_id = $1;', [req.params.id]);
+    if (result.rows.length === 0)
+      return res.status(404).json({ message: 'Request not found' });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE a specific request by ID
-router.put('/:id', (req, res) => {
-  borrowRequests.update(
-    { _id: req.params.id },
-    { $set: req.body },
-    {},
-    (err, numUpdated) => {
-      if (err) return res.status(500).json({ error: err });
-      if (numUpdated === 0) return res.status(404).json({ message: 'Request not found' });
-      res.json({ message: 'Request updated successfully' });
-    }
-  );
+// ✅ UPDATE a specific request by ID
+router.put('/:id', async (req, res) => {
+  try {
+    const updates = req.body;
+    const fields = Object.keys(updates);
+    const values = Object.values(updates);
+
+    if (fields.length === 0) return res.status(400).json({ message: 'No fields to update' });
+
+    const setClause = fields.map((field, i) => `${field} = $${i + 1}`).join(', ');
+    const query = `UPDATE borrow_requests SET ${setClause} WHERE request_id = $${fields.length + 1} RETURNING *;`;
+
+    const result = await pool.query(query, [...values, req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ message: 'Request not found' });
+
+    res.json({ message: 'Request updated successfully', updated: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE a specific request by ID
-router.delete('/:id', (req, res) => {
-  borrowRequests.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'Request not found' });
+// ✅ DELETE a specific request by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM borrow_requests WHERE request_id = $1 RETURNING *;', [req.params.id]);
+    if (result.rowCount === 0)
+      return res.status(404).json({ message: 'Request not found' });
+
     res.json({ message: 'Request deleted successfully' });
-  });
+  } catch (err) {
+    console.error('Error deleting request:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Generate Student Copy PDF
 router.post('/:id/generate-pdf-student', async (req, res) => {
   try {
     const requestId = req.params.id;
-    const request = await findOneAsync(borrowRequests, { _id: requestId });
+
+    // Fetch request + instructor + student
+    const requestQuery = `
+      SELECT br.*, 
+             u.name AS student_name, 
+             ins.name AS instructor_name
+      FROM borrow_requests br
+      LEFT JOIN users u ON br.user_id = u.user_id
+      LEFT JOIN users ins ON br.instructor_id = ins.user_id
+      WHERE br.request_id = $1;
+    `;
+    const requestRes = await pool.query(requestQuery, [requestId]);
+    const request = requestRes.rows[0];
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    const members = await findAsync(groups, { request_id: request._id });
+    // Fetch group members
+    const groupRes = await pool.query('SELECT * FROM groups WHERE request_id = $1;', [requestId]);
+    const members = groupRes.rows;
+
+    // Leader and members
     const leader = members.find(m => m.is_leader);
-    const leaderUser = leader ? await findOneAsync(users, { _id: leader.user_id }) : null;
-    const memberUsers = await Promise.all(
-      members.filter(m => !m.is_leader).map(m => findOneAsync(users, { _id: m.user_id }))
+    const leaderUser = leader
+      ? (await pool.query('SELECT * FROM users WHERE user_id = $1;', [leader.user_id])).rows[0]
+      : null;
+    const memberUsers = (await Promise.all(
+      members.filter(m => !m.is_leader).map(m => pool.query('SELECT * FROM users WHERE user_id = $1;', [m.user_id]))
+    )).map(r => r.rows[0]);
+
+    const instructorUser = request.instructor_id
+      ? (await pool.query('SELECT * FROM users WHERE user_id = $1;', [request.instructor_id])).rows[0]
+      : null;
+
+    // Borrowed items + tools
+    const itemRes = await pool.query(
+      'SELECT bi.*, t.name AS tool_name, t.tool_id FROM borrow_items bi JOIN tools t ON bi.tool_id = t.tool_id WHERE bi.request_id = $1;',
+      [requestId]
     );
-    const instructorUser = await findOneAsync(users, { _id: request.instructor_id });
-    const reqItems = await findAsync(borrowItems, { request_id: request._id });
-    const fullItems = await Promise.all(reqItems.map(ri => findOneAsync(tools, { tool_id: ri.tool_id })));
-    const custodian = await findOneAsync(users, { role_id: 1 });
-    const programHead = await findOneAsync(users, { role_id: 3 });
+    const reqItems = itemRes.rows;
+    const fullItems = reqItems.map(r => ({ tool_id: r.tool_id, name: r.tool_name }));
+
+    // Custodian + Program Head
+    const custodian = (await pool.query('SELECT * FROM users WHERE role_id = 1 LIMIT 1;')).rows[0];
+    const programHead = (await pool.query('SELECT * FROM users WHERE role_id = 3 LIMIT 1;')).rows[0];
 
     const pdfPath = path.resolve(`./pdf/borrow_slip_student_${request.request_slip_id}.pdf`);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
@@ -394,8 +372,11 @@ router.post('/:id/generate-pdf-student', async (req, res) => {
     const dateRequested = request.date_requested
       ? new Date(request.date_requested).toISOString().split('T')[0]
       : '';
+    const labDate = request.lab_date
+      ? new Date(request.lab_date).toISOString().split('T')[0]
+      : '';
     doc.text(
-      `Date Requested: ${dateRequested}        Date Use: ${request.lab_date || ''}        Time: ${request.lab_time || ''}`,
+      `Date Requested: ${dateRequested}        Date Use: ${labDate}        Time: ${request.lab_time || ''}`,
       bodyLeft,
       doc.y,
       { width: bodyWidth }
@@ -499,25 +480,43 @@ router.post('/:id/generate-pdf-student', async (req, res) => {
 router.post('/:id/generate-pdf-custodian', async (req, res) => {
   try {
     const requestId = req.params.id;
-    const request = await findOneAsync(borrowRequests, { _id: requestId });
+
+    const requestRes = await pool.query(
+      `SELECT br.*, u.name AS student_name, ins.name AS instructor_name
+       FROM borrow_requests br
+       LEFT JOIN users u ON br.user_id = u.user_id
+       LEFT JOIN users ins ON br.instructor_id = ins.user_id
+       WHERE br.request_id = $1;`,
+      [requestId]
+    );
+    const request = requestRes.rows[0];
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    // Fetch related data
-    const members = await findAsync(groups, { request_id: request._id });
+    const members = (await pool.query('SELECT * FROM groups WHERE request_id = $1;', [requestId])).rows;
     const leader = members.find(m => m.is_leader);
-    const leaderUser = leader ? await findOneAsync(users, { _id: leader.user_id }) : null;
-    const memberUsers = await Promise.all(
-      members.filter(m => !m.is_leader).map(m => findOneAsync(users, { _id: m.user_id }))
+    const leaderUser = leader
+      ? (await pool.query('SELECT * FROM users WHERE user_id = $1;', [leader.user_id])).rows[0]
+      : null;
+    const memberUsers = (await Promise.all(
+      members.filter(m => !m.is_leader).map(m => pool.query('SELECT * FROM users WHERE user_id = $1;', [m.user_id]))
+    )).map(r => r.rows[0]);
+
+    const instructorUser = request.instructor_id
+      ? (await pool.query('SELECT * FROM users WHERE user_id = $1;', [request.instructor_id])).rows[0]
+      : null;
+
+    const itemRes = await pool.query(
+      'SELECT bi.*, t.name AS tool_name, t.tool_id FROM borrow_items bi JOIN tools t ON bi.tool_id = t.tool_id WHERE bi.request_id = $1;',
+      [requestId]
     );
-    const instructorUser = await findOneAsync(users, { _id: request.instructor_id });
-    const reqItems = await findAsync(borrowItems, { request_id: request._id });
-    const fullItems = await Promise.all(reqItems.map(ri => findOneAsync(tools, { tool_id: ri.tool_id })));
+    const reqItems = itemRes.rows;
+    const fullItems = reqItems.map(r => ({ tool_id: r.tool_id, name: r.tool_name }));
+    
+    const releaseData = (await pool.query('SELECT * FROM releases WHERE request_id = $1;', [requestId])).rows[0];
+    const returnData = (await pool.query('SELECT * FROM returns WHERE request_id = $1;', [requestId])).rows;
 
-    const releaseData = await findOneAsync(releases, { request_id: request._id });
-    const returnData = await findAsync(returns, { request_id: request._id });
-
-    const custodian = await findOneAsync(users, { role_id: 1 });
-    const programHead = await findOneAsync(users, { role_id: 3 });
+    const custodian = (await pool.query('SELECT * FROM users WHERE role_id = 1 LIMIT 1;')).rows[0];
+    const programHead = (await pool.query('SELECT * FROM users WHERE role_id = 3 LIMIT 1;')).rows[0];
 
     const pdfPath = path.resolve(`./pdf/borrow_slip_custodian_${request.request_slip_id}.pdf`);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
@@ -546,8 +545,11 @@ router.post('/:id/generate-pdf-custodian', async (req, res) => {
     const dateRequested = request.date_requested
       ? new Date(request.date_requested).toISOString().split('T')[0]
       : '';
+    const labDate = request.lab_date
+      ? new Date(request.lab_date).toISOString().split('T')[0]
+      : '';
     doc.text(
-      `Date Requested: ${dateRequested}        Date Use: ${request.lab_date || ''}        Time: ${request.lab_time || ''}`,
+      `Date Requested: ${dateRequested}        Date Use: ${labDate}        Time: ${request.lab_time || ''}`,
       bodyLeft,
       doc.y,
       { width: bodyWidth }

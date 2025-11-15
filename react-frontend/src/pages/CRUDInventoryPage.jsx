@@ -67,7 +67,7 @@ const CRUDInventoryPage = () => {
   // Sorting
   if (sortBy === 'Name (A-Z)') filteredData.sort((a, b) => a.name.localeCompare(b.name));
   else if (sortBy === 'Name (Z-A)') filteredData.sort((a, b) => b.name.localeCompare(a.name));
-  else filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  else filteredData.sort((a, b) => b.tool_id - a.tool_id);
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const getPaginated = (page) => filteredData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -194,7 +194,7 @@ const CRUDInventoryPage = () => {
               </thead>
               <tbody>
                 {getPaginated(currentPage).map((item, idx) => (
-                  <tr key={item._id}>
+                  <tr key={item.tool_id}>
                     <td style={styles.td}>{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                     <td style={styles.td}>
                       <img
@@ -304,7 +304,7 @@ const CRUDInventoryPage = () => {
             onCancel={() => setShowDeleteModal(false)}
             onDelete={async () => {
               try {
-                await axios.delete(`/api/tools/${selectedTool._id}`);
+                await axios.delete(`/api/tools/${selectedTool.tool_id}`);
                 setShowDeleteModal(false);
                 setShowItemDeletedModal(true);
 

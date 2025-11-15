@@ -24,12 +24,12 @@ const RequestProgHeadPage = () => {
         const { data } = await axios.get('/api/borrow-requests/programhead/new');
 
         const formatted = data.map((req) => ({
-          requestId: req.request_slip_id,
+          request_id: req.request_id,
+          request_slip_id: req.request_slip_id,
           name: req.student_name,
           subject: req.subject,
           requestDate: req.date_requested,
-          status: req.status, 
-          _id: req._id,
+          status: req.status
         }));
 
         setRequests(formatted);
@@ -220,7 +220,7 @@ const RequestProgHeadPage = () => {
               return (
                 <tr
                   key={rowIndex}
-                  onClick={() => handleNavigate(req._id)}
+                  onClick={() => handleNavigate(req.request_id)}
                   onMouseEnter={() => setHoveredRowIndex(rowIndex)}
                   onMouseLeave={() => setHoveredRowIndex(null)}
                   style={{
@@ -230,7 +230,7 @@ const RequestProgHeadPage = () => {
                   }}
                 >
                   <td style={styles.thtd}>{rowIndex + 1}</td>
-                  <td style={styles.thtd}>{req.requestId}</td>
+                  <td style={styles.thtd}>{req.request_slip_id}</td>
                   <td style={styles.thtd}>{req.name}</td>
                   <td style={styles.thtd}>{req.subject}</td>
                   <td style={styles.thtd}>

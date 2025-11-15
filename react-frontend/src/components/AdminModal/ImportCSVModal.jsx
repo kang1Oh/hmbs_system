@@ -30,7 +30,10 @@ const ImportCSVModal = ({ onClose, endpoint, entityName, onImportSuccess}) => {
       const res = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}${endpoint}`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { 
+          headers: { "Content-Type": "multipart/form-data" },
+          withCredentials: true
+        }
       );
 
       if (onImportSuccess) onImportSuccess();  // Refresh parent data if callback provided
@@ -49,7 +52,7 @@ const ImportCSVModal = ({ onClose, endpoint, entityName, onImportSuccess}) => {
 
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    onClose(); // Close parent modal too
+    onClose();
   };
 
   const modalStyle = {

@@ -24,7 +24,6 @@ const CRUDUserPageAdmin = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUserDeletedModal, setShowUserDeletedModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
-  const [showImportSuccessModal, setShowImportSuccessModal] = useState(false);
   const [activeTab, setActiveTab] = useState(roleTabs[0]);
   const [currentPage, setCurrentPage] = useState(1);
   const [studentPage, setStudentPage] = useState(1);
@@ -174,8 +173,8 @@ const CRUDUserPageAdmin = () => {
   const handleExport = async () => {
     // when requesting export
     axios.get('/api/users/export', {
-      withCredentials: true, // 🔑 required so session cookie is sent
-      responseType: 'blob',  // so browser handles CSV download correctly
+      withCredentials: true, 
+      responseType: 'blob', 
     })
     .then((res) => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -227,26 +226,25 @@ const CRUDUserPageAdmin = () => {
         Custodian: 1,
       };
 
+      const role_id = roleIDMap[formData.role];
+      if (!role_id) {
+        throw new Error(`Invalid role selected: ${formData.role}`);
+      }
+
       const payload = {
-        name: formData.fullName,
-        email: formData.email,
+        name: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        role_id: roleIDMap[formData.role],
+        role_id,
       };
 
       const res = await axios.post('/api/users', payload, { withCredentials: true });
-
-      // res.data contains the new user (safeDoc without password)
-      await fetchUsers(); // refresh user list
+      await fetchUsers();
       setShowUserAddedModal(true);
       setShowAddUserModal(false);
     } catch (err) {
       console.error('Error adding user:', err);
-      if (err.response?.data?.error) {
-        toast.error(`Failed to add user: ${err.response.data.error}`);
-      } else {
-        toast.error('Failed to add user: Unknown error');
-      }
+      toast.error(`Failed to add user: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -281,7 +279,7 @@ const CRUDUserPageAdmin = () => {
             </thead>
             <tbody>
               {getPaginated(data, page).map((user, index) => (
-                <tr key={user._id}>
+                <tr key={user.user_id}>
                   <td style={styles.td}>{index + 1 + (page - 1) * USERS_PER_PAGE}</td>
                   <td style={styles.td}>{user.user_id}</td>
                   <td style={styles.td}>{user.name}</td>
@@ -429,7 +427,7 @@ const CRUDUserPageAdmin = () => {
           onCancel={() => setShowDeleteModal(false)}
           onDelete={async () => {
             try {
-              await axios.delete(`/api/users/${selectedUser._id}`, { withCredentials: true });
+              await axios.delete(`/api/users/${selectedUser.user_id}`, { withCredentials: true });
               setShowDeleteModal(false);
               setShowUserDeletedModal(true);
 

@@ -2,19 +2,24 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { Parser } = require('json2csv');
-const { users, groups, borrowRequests } = require('../models/db');
-const upload = require('../middleware/upload');
-const csv = require('csv-parser');
 const multer = require('multer');
+const csv = require('csv-parser');
+const { Parser } = require('json2csv');
 const uploadMiddleware = multer({ dest: 'uploads/' });
+const pool = require('../models/db');
 
-// 📤 EXPORT current DB to CSV into /csv_exports
-router.get('/export', requireAuth, (req, res) => {
-  users.find({}).sort({ user_id: 1 }).exec((err, docs) => {
-    if (err) return res.status(500).json({ error: err });
+// 🔒 Auth middleware
+function requireAuth(req, res, next) {
+  if (!req.session || !req.session.user)
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  next();
+}
 
-    // match seeder columns
+// 🧾 EXPORT users to CSV
+router.get('/export', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM users ORDER BY user_id ASC');
+
     const fields = [
       'user_id',
       'role_id',
@@ -22,279 +27,222 @@ router.get('/export', requireAuth, (req, res) => {
       'password',
       'name',
       'active',
-      'createdAt',
-      '_id'
+      'created_at'
     ];
     const parser = new Parser({ fields });
-    const csv = parser.parse(docs);
+    const csvData = parser.parse(rows);
 
-    const csvPath = path.join(__dirname, '..', 'csv_exports', 'users.csv');
-    try {
-      fs.writeFileSync(csvPath, csv);
-    } catch (e) {
-      console.error('⚠️ Failed to write export CSV:', e.message);
-    }
+    const exportPath = path.join(__dirname, '..', 'csv_exports', 'users.csv');
+    fs.writeFileSync(exportPath, csvData);
 
     res.header('Content-Type', 'text/csv');
     res.attachment('users.csv');
-    res.send(csv);
-  });
-});
-
-const validRoles = [1, 2, 3, 4];
-
-// 📥 IMPORT users from uploaded CSV file (with header validation)
-router.post("/import", uploadMiddleware.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-  const requiredHeaders = ["name", "email", "password", "role_id"];
-  const results = [];
-  let headersValidated = false;
-
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on("headers", (headers) => {
-      const normalized = headers.map((h) => h.trim().toLowerCase());
-      const missing = requiredHeaders.filter(
-        (h) => !normalized.includes(h.toLowerCase())
-      );
-
-      if (missing.length > 0) {
-        fs.unlinkSync(req.file.path);
-        return res
-          .status(400)
-          .json({ message: `Missing required columns: ${missing.join(", ")}` });
-      }
-
-      headersValidated = true;
-    })
-    
-    .on("data", (row) => {
-      if (headersValidated) {
-        const roleId = Number(row.role_id);
-        if (!validRoles.includes(roleId)) return; // skip invalid roles
-
-        results.push({
-          name: row.name,
-          email: row.email.trim().toLowerCase(), // normalize
-          password: row.password,
-          role_id: Number(row.role_id),
-          active: true,
-          createdAt: new Date(),
-        });
-      }
-    })
-    .on("end", () => {
-      if (results.length === 0) {
-        fs.unlinkSync(req.file.path);
-        return res
-          .status(400)
-          .json({ message: "CSV file contained no valid rows" });
-      }
-
-      // Grab all emails first
-      const emails = results.map((r) => r.email);
-
-      users.find({ email: { $in: emails } }, (err, existing) => {
-        if (err) return res.status(500).json({ error: err });
-
-        const existingEmails = new Set(existing.map((u) => u.email));
-        const filtered = results.filter((r) => !existingEmails.has(r.email));
-
-        if (filtered.length === 0) {
-          fs.unlinkSync(req.file.path);
-          return res.json({ message: "No new users imported (all duplicates)" });
-        }
-
-        // get max user_id
-        users.find({}).sort({ user_id: -1 }).limit(1).exec((err, docs) => {
-          if (err) return res.status(500).json({ error: err });
-
-          const maxId = (docs && docs[0] && Number(docs[0].user_id)) || 0;
-          let nextId = maxId + 1;
-
-          const usersWithIds = filtered.map((user, idx) => ({
-            ...user,
-            user_id: nextId + idx,
-          }));
-
-          users.insert(usersWithIds, (err, newDocs) => {
-            fs.unlinkSync(req.file.path);
-            if (err) return res.status(500).json({ error: err });
-
-            const safeDocs = newDocs.map(({ password, ...rest }) => rest);
-            res.json({
-              message: `Imported ${newDocs.length} users (duplicates skipped)`,
-              users: safeDocs,
-            });
-          });
-        });
-      });
-    });
-});
-
-// auth helper
-function requireAuth(req, res, next) {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-  next();
-}
-
-// helper: find by numeric user_id or _id
-function findUserById(id, cb) {
-  if (/^\d+$/.test(String(id))) {
-    users.findOne({ user_id: Number(id) }, cb);
-  } else {
-    users.findOne({ _id: id }, cb);
-  }
-}
-
-// helper: next numeric user_id
-function getNextUserId(cb) {
-  users.find({}).sort({ user_id: -1 }).limit(1).exec((err, docs) => {
-    if (err) return cb(err);
-    const max = (docs && docs[0] && Number(docs[0].user_id)) || 0;
-    cb(null, max + 1);
-  });
-}
-
-// GET all users (hide password)
-router.get('/', (req, res) => {
-  users.find({ active: true }).sort({ user_id: 1 }).exec((err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    const result = docs.map(({ password, ...rest }) => rest);
-    res.json(result);
-  });
-});
-
-// GET all users (unsafe, includes password) – for internal seeder/export only
-router.get('/with-passwords', (req, res) => {
-  users.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs); // includes password
-  });
-});
-
-// SEARCH by name + role with borrow check
-router.get('/search/:role/:name', async (req, res) => {
-  const { role, name } = req.params;
-  const regex = new RegExp(name, 'i');
-
-  try {
-    // find users with given role and matching name
-    const foundUsers = await new Promise((resolve, reject) => {
-      users.find(
-        { name: regex, role_id: { $in: [Number(role), role] } },
-        (err, docs) => (err ? reject(err) : resolve(docs || []))
-      );
-    });
-
-    if (!foundUsers.length) return res.json([]);
-
-    // for student role only (4)
-    if (Number(role) === 4 || role === '4') {
-      const userIds = foundUsers.map(u => u._id);
-
-      // find groups that include these users
-      const userGroups = await new Promise((resolve, reject) => {
-        groups.find({ user_id: { $in: userIds } }, (err, docs) =>
-          err ? reject(err) : resolve(docs || [])
-        );
-      });
-
-      if (userGroups.length) {
-        const requestIds = [...new Set(userGroups.map(g => g.request_id))];
-
-        // get statuses of related borrow requests
-        const relatedRequests = await new Promise((resolve, reject) => {
-          borrowRequests.find(
-            { _id: { $in: requestIds } },
-            (err, docs) => (err ? reject(err) : resolve(docs || []))
-          );
-        });
-
-        const ongoingRequestIds = new Set(
-          relatedRequests
-            .filter(r => [1, 2, 3, 4].includes(Number(r.status_id)))
-            .map(r => r._id)
-        );
-
-        const invalidUserIds = new Set(
-          userGroups
-            .filter(g => ongoingRequestIds.has(g.request_id))
-            .map(g => g.user_id)
-        );
-
-        // filter out students in ongoing requests
-        const filtered = foundUsers.filter(u => !invalidUserIds.has(u._id));
-
-        const unique = {};
-        filtered.forEach(u => {
-          unique[u.email] = {
-            _id: u._id,
-            user_id: u.user_id,
-            name: u.name,
-            email: u.email,
-          };
-        });
-        return res.json(Object.values(unique));
-      }
-    }
-
-    // for non-students or if no group
-    const unique = {};
-    foundUsers.forEach(u => {
-      unique[u.email] = {
-        _id: u._id,
-        user_id: u.user_id,
-        name: u.name,
-        email: u.email,
-      };
-    });
-    res.json(Object.values(unique));
+    res.send(csvData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST create user. Assign numeric user_id if absent.
-router.post('/', (req, res) => {
-  const body = { ...req.body };
-  body.role_id = body.role_id !== undefined ? Number(body.role_id) : undefined;
-  body.active = true;
-  body.createdAt = new Date();
+// ✅ IMPORT users from CSV
+router.post('/import', uploadMiddleware.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-  const finishInsert = (docToInsert) => {
-    users.insert(docToInsert, (err, newDoc) => {
-      if (err) return res.status(500).json({ error: err });
-      const { password, ...safeDoc } = newDoc;
-      res.status(201).json(safeDoc);
-    });
-  };
+  const requiredHeaders = ['role_id', 'email', 'password', 'name', 'active'];
+  const results = [];
+  let headersValidated = false;
 
-  if (body.user_id === undefined || body.user_id === '' || body.user_id === null) {
-    getNextUserId((err, nextId) => {
-      if (err) return res.status(500).json({ error: err });
-      body.user_id = nextId;
-      finishInsert(body);
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('headers', (headers) => {
+      const normalized = headers.map((h) => h.trim().toLowerCase());
+      const missing = requiredHeaders.filter(
+        (h) => !normalized.includes(h.toLowerCase())
+      );
+      if (missing.length > 0) {
+        fs.unlinkSync(req.file.path);
+        res
+          .status(400)
+          .json({ message: `Missing required columns: ${missing.join(', ')}` });
+      } else {
+        headersValidated = true;
+      }
+    })
+    .on('data', (row) => {
+      if (headersValidated) {
+        results.push({
+          role_id: Number(row.role_id),
+          email: row.email?.trim().toLowerCase(),
+          password: row.password,
+          name: row.name,
+          active:
+            row.active &&
+            (row.active.toString().toLowerCase() === 'true' ||
+              row.active.toString() === '1'),
+        });
+      }
+    })
+    .on('end', async () => {
+      fs.unlinkSync(req.file.path);
+      if (results.length === 0)
+        return res
+          .status(400)
+          .json({ message: 'CSV file contained no valid rows' });
+
+      try {
+        const inserted = [];
+        for (const user of results) {
+          // Check for duplicate emails before inserting
+          const existing = await pool.query(
+            'SELECT user_id FROM users WHERE email = $1',
+            [user.email]
+          );
+          if (existing.rows.length > 0) continue;
+
+          const query = `
+            INSERT INTO users (role_id, email, password, name, active)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *;
+          `;
+          const values = [
+            user.role_id,
+            user.email,
+            user.password,
+            user.name,
+            user.active,
+          ];
+          const { rows } = await pool.query(query, values);
+          inserted.push(rows[0]);
+        }
+
+        if (inserted.length === 0)
+          return res.json({
+            message: 'No new users imported (all duplicates)',
+            users: [],
+          });
+
+        res.json({
+          message: `Imported ${inserted.length} users successfully`,
+          users: inserted,
+        });
+      } catch (err) {
+        console.error('User import error:', err);
+        res.status(500).json({ error: err.message });
+      }
     });
-  } else {
-    body.user_id = Number(body.user_id);
-    finishInsert(body);
+});
+
+// 👥 GET all users (hide password)
+router.get('/', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT user_id, role_id, email, name, active, created_at FROM users WHERE active = TRUE ORDER BY user_id ASC'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// POST login
-router.post('/login', (req, res) => {
+// 👥 GET all users (with passwords)
+router.get('/with-passwords', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM users');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔍 SEARCH by role + name
+router.get('/search/:role/:name', async (req, res) => {
+  const { role, name } = req.params;
+
+  try {
+    // If searching for students (role 4), exclude students with ongoing requests
+    if (Number(role) === 4) {
+      const query = `
+        SELECT u.user_id, u.name, u.email
+        FROM users u
+        WHERE u.role_id = 4
+          AND u.active = TRUE
+          AND u.name ILIKE $1
+          AND u.user_id NOT IN (
+            SELECT g.user_id
+            FROM groups g
+            JOIN borrow_requests br ON br.request_id = g.request_id
+            WHERE br.status_id IN (1,2,3,4)
+          )
+      `;
+      const { rows } = await pool.query(query, [`%${name}%`]);
+      return res.json(rows);
+    }
+
+    // Otherwise, normal search for instructors
+    const { rows } = await pool.query(
+      `
+        SELECT user_id, name, email
+        FROM users
+        WHERE role_id = $1
+          AND active = TRUE
+          AND name ILIKE $2
+      `,
+      [role, `%${name}%`]
+    );
+    res.json(rows);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+//Create User
+router.post('/', async (req, res) => {
+  const { role_id, email, password, name } = req.body;
+  try {
+    const existing = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+
+    const { rows } = await pool.query(
+      'INSERT INTO users (role_id, email, password, name, active) VALUES ($1, $2, $3, $4, TRUE) RETURNING user_id, role_id, email, name, active, created_at',
+      [role_id, email, password, name]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('Add user error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) return res.status(400).json({ error: 'Email required' });
+
+    const q = 'SELECT active FROM users WHERE email = $1 LIMIT 1';
+    const { rows } = await pool.query(q, [email.trim().toLowerCase()]);
+    if (rows.length === 0) return res.json({ exists: false, active: null });
+
+    // If a row exists, return exists true and its active flag
+    return res.json({ exists: true, active: rows[0].active });
+  } catch (err) {
+    console.error('check-email error', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// 🔐 LOGIN
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  users.findOne({ email }, (err, user) => {
-    if (err) return res.status(500).json({ success: false, message: 'Server error' });
-    if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    if (user.password !== password) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = rows[0];
+    if (!user || user.password !== password)
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     req.session.user = {
-      _id: user._id,
       user_id: user.user_id,
       email: user.email,
       role_id: String(user.role_id),
@@ -302,16 +250,19 @@ router.post('/login', (req, res) => {
     };
 
     res.json({ success: true, message: 'Login successful', user: req.session.user });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
-// GET /session
+// 🧾 SESSION
 router.get('/session', (req, res) => {
-  if (req.session && req.session.user) return res.json({ authenticated: true, user: req.session.user });
+  if (req.session && req.session.user)
+    return res.json({ authenticated: true, user: req.session.user });
   res.status(401).json({ authenticated: false });
 });
 
-// POST /logout
+// 🚪 LOGOUT
 router.post('/logout', (req, res) => {
   if (!req.session) return res.json({ success: true });
   req.session.destroy((err) => {
@@ -321,41 +272,50 @@ router.post('/logout', (req, res) => {
   });
 });
 
-// GET a user by numeric user_id or _id
-router.get('/:id', (req, res) => {
-  findUserById(req.params.id, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'User not found' });
-    const { password, ...safeDoc } = doc;
-    res.json(safeDoc);
-  });
+// 🧍‍♂️ GET by ID
+router.get('/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const { rows } = await pool.query(
+      'SELECT user_id, role_id, email, name, active, created_at FROM users WHERE user_id = $1',
+      [id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// PUT update by numeric user_id or _id
-router.put('/:id', (req, res) => {
+// ✏️ UPDATE user
+router.put('/:id', async (req, res) => {
   const id = req.params.id;
-  const selector = /^\d+$/.test(String(id)) ? { user_id: Number(id) } : { _id: id };
-
-  // Prevent accidental _id overwrite
-  if (req.body._id) delete req.body._id;
-
-  users.update(selector, { $set: req.body }, {}, (err, numReplaced) => {
-    if (err) return res.status(500).json({ error: err }); 
-    if (numReplaced === 0) return res.status(404).json({ message: 'User not found' });
+  const { name, email, role_id, active } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE users SET name = $1, email = $2, role_id = $3, active = $4 WHERE user_id = $5',
+      [name, email, role_id, active, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User updated' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE (soft) by numeric user_id or _id
-router.delete('/:id', (req, res) => {
+// 🗑️ DEACTIVATE user (soft delete)
+router.delete('/:id', async (req, res) => {
   const id = req.params.id;
-  const selector = /^\d+$/.test(String(id)) ? { user_id: Number(id) } : { _id: id };
-
-  users.update(selector, { $set: { active: false } }, {}, (err, numAffected) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numAffected === 0) return res.status(404).json({ message: 'User not found' });
+  try {
+    const result = await pool.query(
+      'UPDATE users SET active = FALSE WHERE user_id = $1',
+      [id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User account deactivated' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

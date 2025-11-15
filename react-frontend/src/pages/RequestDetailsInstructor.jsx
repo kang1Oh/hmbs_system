@@ -29,7 +29,7 @@ const RequestDetailsInstructor = () => {
 
         // 2. Get borrow items + enrich
         const { data: allItems } = await axios.get('/api/borrow-items');
-        const requestItems = allItems.filter(i => i.request_id === reqData._id);
+        const requestItems = allItems.filter(i => i.request_id === reqData.request_id);
 
         const enrichedItems = await Promise.all(
           requestItems.map(async (i) => {
@@ -47,7 +47,7 @@ const RequestDetailsInstructor = () => {
         setItems(enrichedItems);
 
         // 3. Get group members + enrich with user info
-        const { data: group } = await axios.get(`/api/groups/request/${reqData._id}`);
+        const { data: group } = await axios.get(`/api/groups/request/${reqData.request_id}`);
 
         const enrichedMembers = await Promise.all(
           group.map(async (gm) => {
@@ -66,23 +66,15 @@ const RequestDetailsInstructor = () => {
 
         // 4. Check approvals
         const { data: approvals } = await axios.get('/api/approvals');
-        // current user (if available) + instructor id to cover both cases
+
         const currentUser = JSON.parse(localStorage.getItem('user') || 'null') || {};
-        const approverIds = [...(currentUser._id ? [currentUser._id] : []), reqData.instructor_id];
+        const approverIds = [
+          ...(currentUser.user_id ? [String(currentUser.user_id)] : []),
+          String(reqData.instructor_id)
+        ];
 
-        // normalize request ids to check against (covers either stored form)
-        const reqIds = reqData._id;
-
-        const approvalExists = approvals.some(a => {
-          const aReq = String(a.request_id);
-          const aUser = String(a.user_id);
-          const aStatus = Number(a.status_id);
-          return reqIds.includes(aReq) && approverIds.includes(aUser) && (aStatus === 2 || aStatus === 6);
-        });
-
-        // store exact status for display
-        const approval = approvals.find(a => 
-          reqIds.includes(String(a.request_id)) &&
+        const approval = approvals.find(a =>
+          a.request_id === reqData.request_id &&
           approverIds.includes(String(a.user_id)) &&
           (a.status_id === 2 || a.status_id === 6)
         );
@@ -100,18 +92,16 @@ const RequestDetailsInstructor = () => {
   const handleApprove = async () => {
     try {
       const payload = {
-        request_id: request._id,
+        request_id: request.request_id,
         user_id: request.instructor_id,
         name: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).name : 'Instructor',
         role_id: 2,
         status_id: 2,
         remarks: 'Approved request',
-        date_approved: new Date().toISOString()
       };
       await axios.post('/api/approvals', payload);
       setApprovalExists(true);
       setShowApprovedModal(true);
-      fetchData();
     } catch (err) {
       console.error('Approve failed:', err);
     }
@@ -120,22 +110,20 @@ const RequestDetailsInstructor = () => {
   const handleReject = async (reason) => {
     try {
       const payload = {
-        request_id: request._id,
+        request_id: request.request_id,
         user_id: request.instructor_id,
         name: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).name : 'Instructor',
         role_id: 2,
         status_id: 6,
         remarks: reason,
-        date_approved: new Date().toISOString()
       };
       await axios.post('/api/approvals', payload);
 
-      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 6 });
+      await axios.put(`/api/borrow-requests/${request.request_id}`, { status_id: 6 });
 
       setApprovalExists(true);
       setShowRejectModal(false);
       setShowDeniedModal(true);
-      fetchData();
     } catch (err) {
       console.error('Reject failed:', err);
     }
@@ -262,7 +250,7 @@ const RequestDetailsInstructor = () => {
           </thead>
           <tbody>
             {members.others?.map((m, i) => (
-              <tr key={m._id}>
+              <tr key={m.user_id}>
                 <td style={styles.td}>{i + 1}</td>
                 <td style={styles.td}>{m.user?.name || '(unknown)'}</td>
                 <td style={styles.td}>{m.user?.email || '(unknown)'}</td>
@@ -289,7 +277,7 @@ const RequestDetailsInstructor = () => {
           </thead>
           <tbody>
             {items.map((item, i) => (
-              <tr key={item._id}>
+              <tr key={item.tool_id}>
                 <td style={styles.td}>{i + 1}</td>
                 <td style={styles.td}><img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt={item.name} style={styles.itemImage} /></td>
                 <td style={styles.td}>{item.name}</td>

@@ -192,7 +192,7 @@ function EquipmentsPage() {
             <div style={styles.grid}>
               {paginatedList.map(item => (
                 <ItemCard
-                  key={item._id}
+                  key={item.tool_id}
                   name={<span style={styles.cardName} title={item.name}>{item.name}</span>}
                   qty={item.available_qty}
                   img={item.img}

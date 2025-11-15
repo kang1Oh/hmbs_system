@@ -1,49 +1,72 @@
 // routes/returns_routes.js
 const express = require('express');
 const router = express.Router();
-const { returns } = require('../models/db');
+const pool = require('../models/db');
 
-// Get all
-router.get('/', (req, res) => {
-  returns.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs);
-  });
+// GET all returns
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM returns ORDER BY return_id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Create
-router.post('/', (req, res) => {
-  returns.insert(req.body, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(newDoc);
-  });
+// CREATE new return
+router.post('/', async (req, res) => {
+  const { request_id, tool_id, quantity, status, remarks, returned_to, return_date} = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO returns (request_id, tool_id, quantity, status, remarks, returned_to, return_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING *`,
+      [request_id, tool_id, quantity, status, remarks, returned_to, return_date]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Get one
-router.get('/:id', (req, res) => {
-  returns.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Return not found' });
-    res.json(doc);
-  });
+// GET return by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM returns WHERE return_id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Return not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Update
-router.put('/:id', (req, res) => {
-  returns.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numUpdated) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numUpdated === 0) return res.status(404).json({ message: 'Return not found' });
-    res.json({ message: 'Return updated successfully' });
-  });
+// UPDATE return
+router.put('/:id', async (req, res) => {
+  const { request_id, tool_id, quantity, status, remarks, returned_to, return_date} = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE returns 
+       SET request_id=$1, tool_id=$2, quantity=$3, status=$4, remarks=$5, returned_to=$6, return_date=$7
+       WHERE return_id=$8
+       RETURNING *`,
+      [request_id, tool_id, quantity, status, remarks, returned_to, return_date, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Return not found' });
+    res.json({ message: 'Return updated successfully', updated: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Delete
-router.delete('/:id', (req, res) => {
-  returns.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'Return not found' });
+// DELETE return
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM returns WHERE return_id=$1 RETURNING *', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Return not found' });
     res.json({ message: 'Return deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

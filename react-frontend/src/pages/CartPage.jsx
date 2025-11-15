@@ -17,7 +17,7 @@ function CartPage() {
   };
 
   const handleIncrement = (id, maxQty) => {
-    const item = cart.find(i => i._id === id);
+    const item = cart.find(i => i.tool_id === id);
     if (item.selectedQty < maxQty) {
       updateQuantity(id, item.selectedQty + 1);
     } else {
@@ -27,7 +27,7 @@ function CartPage() {
 
 
   const handleDecrement = (id) => {
-    const item = cart.find(i => i._id === id);
+    const item = cart.find(i => i.tool_id === id);
     if (item.selectedQty > 1) {
       updateQuantity(id, item.selectedQty - 1);
     }
@@ -212,7 +212,7 @@ function CartPage() {
             <p style={{ color: '#777' }}>Your cart is empty.</p>
           ) : (
             cart.map(item => (
-              <div key={item._id} style={itemBox}>
+              <div key={item.tool_id} style={itemBox}>
                 <img 
                   src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`}
                   alt={item.name} 
@@ -232,26 +232,27 @@ function CartPage() {
                   </div>
                   <div style={qtyControls}>
                     <div
-                      style={qtyBox(hoveredBtn === `dec-${item._id}`)}
-                      onClick={() => handleDecrement(item._id)}
-                      onMouseEnter={() => setHoveredBtn(`dec-${item._id}`)}
+                      style={qtyBox(hoveredBtn === `dec-${item.tool_id}`)}
+                      onClick={() => handleDecrement(item.tool_id)}
+                      onMouseEnter={() => setHoveredBtn(`dec-${item.tool_id}`)}
                       onMouseLeave={() => setHoveredBtn(null)}
                     >
                       −
                     </div>
                     <div style={qtyDisplayBox}>{item.selectedQty}</div>
                     <div
-                      style={qtyBox(hoveredBtn === `inc-${item._id}`)}
-                      onClick={() => handleIncrement(item._id, item.available_qty)}
-                      onMouseEnter={() => setHoveredBtn(`inc-${item._id}`)}
+                      style={qtyBox(hoveredBtn === `inc-${item.tool_id}`)}
+                      onClick={() => handleIncrement(item.tool_id, item.available_qty)}
+                      onMouseEnter={() => setHoveredBtn(`inc-${item.tool_id}`)}
                       onMouseLeave={() => setHoveredBtn(null)}
+                      disabled={item.selectedQty >= item.available_qty}
                     >
                       +
                     </div>
                     <button
-                      style={removeBtn(hoveredRemove === item._id)}
-                      onClick={() => handleRemove(item._id)}
-                      onMouseEnter={() => setHoveredRemove(item._id)}
+                      style={removeBtn(hoveredRemove === item.tool_id)}
+                      onClick={() => handleRemove(item.tool_id)}
+                      onMouseEnter={() => setHoveredRemove(item.tool_id)}
                       onMouseLeave={() => setHoveredRemove(null)}
                     >
                       Remove

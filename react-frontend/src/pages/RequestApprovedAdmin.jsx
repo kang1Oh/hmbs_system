@@ -114,7 +114,7 @@ const RequestApprovedAdmin = () => {
 
         // 3. group members
         try {
-          const { data: group } = await axios.get(`/api/groups/request/${reqData._id}`);
+          const { data: group } = await axios.get(`/api/groups/request/${reqData.request_id}`);
           const enriched = await Promise.all(
             group.map(async (gm) => {
               try {
@@ -132,7 +132,7 @@ const RequestApprovedAdmin = () => {
 
         // 4. borrow items then enrich with tool numeric
         const { data: allItems } = await axios.get("/api/borrow-items");
-        const requestItems = allItems.filter((i) => String(i.request_id) === String(reqData._id));
+        const requestItems = allItems.filter((i) => String(i.request_id) === String(reqData.request_id));
         const enrichedItems = await Promise.all(
           requestItems.map(async (i) => {
             try {
@@ -154,21 +154,19 @@ const RequestApprovedAdmin = () => {
 
         // 5. existing returns for this request to prefill statuses/remarks
         const { data: allReturns } = await axios.get("/api/returns");
-        const requestReturns = (allReturns || []).filter((r) => String(r.request_id) === String(reqData._id));
+        const requestReturns = (allReturns || []).filter((r) => String(r.request_id) === String(reqData.request_id));
 
         // 6. existing release for this request
         const { data: allReleases } = await axios.get("/api/releases");
         const requestRelease = (allReleases || []).find(
-          (rel) => String(rel.request_id) === String(reqData._id)
+          (rel) => String(rel.request_id) === String(reqData.request_id)
         );
 
         // build statuses and remarks arrays
         const initialStatuses = enrichedItems.map((item) => {
           const itemReturn = requestReturns.find((r) => {
             return (
-              String(r.tool_id) === String(item.tool_id) ||
-              String(r.tool_id) === String(item._id) ||
-              String(r.tool_id) === String(item.tool_numeric_id)
+              String(r.tool_id) === String(item.tool_id)
             );
           });
 
@@ -189,9 +187,7 @@ const RequestApprovedAdmin = () => {
         const remarksArr = enrichedItems.map((item) => {
           const itemReturn = requestReturns.find((r) => {
             return (
-              String(r.tool_id) === String(item.tool_id) ||
-              String(r.tool_id) === String(item._id) ||
-              String(r.tool_id) === String(item.tool_numeric_id)
+              String(r.tool_id) === String(item.tool_id)
             );
           });
           return itemReturn ? itemReturn.remarks || "" : "";
@@ -219,29 +215,49 @@ const RequestApprovedAdmin = () => {
   // persist release when allReleased becomes true
   useEffect(() => {
     if (!request) return;
+    // only act when all items are marked Released and request isn't already marked released
+    if (!allReleased || Number(request.status_id) === 3) return;
+
+    let mounted = true;
     const doRelease = async () => {
-      // if request already status 3 skip
-      if (request.status_id === 3) return;
-      if (!allReleased) return;
-
-      const currentUser = getCurrentUser();
-      const payload = {
-        request_id: request._id,
-        released_by: currentUser._id || currentUser.user_id || "system",
-        release_date: new Date().toISOString().split("T")[0], // yyyy-mm-dd
-      };
-
       try {
-        await axios.post("/api/releases", payload);
-        await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 3 });
-        // update local request
-        setRequest((r) => ({ ...r, status_id: 3 }));
+        // avoid creating duplicate release records
+        const { data: allReleases } = await axios.get("/api/releases");
+        const existing = (allReleases || []).find(
+          (r) => String(r.request_id) === String(request.request_id)
+        );
+
+        const currentUser = getCurrentUser();
+        const payload = {
+          request_id: request.request_id,
+          released_by: currentUser?.user_id || 1,
+          release_date: new Date().toISOString().split("T")[0],
+        };
+
+        // create release only if none exists
+        if (!existing) {
+          await axios.post("/api/releases", payload);
+        }
+
+        // ensure borrow request status is set to 3 (Released)
+        const { data } = await axios.put(`/api/borrow-requests/${request.request_id}`, {
+          status_id: 3,
+        });
+
+        if (mounted) {
+          // update local request with returned updated record
+          setRequest((r) => ({ ...r, ...data.updated }));
+        }
       } catch (err) {
         console.error("Error creating release or updating request:", err);
       }
     };
 
     doRelease();
+
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allReleased, request]);
 
@@ -254,36 +270,48 @@ const RequestApprovedAdmin = () => {
     if (!it || !request) return;
 
     try {
-      const { data: allReturns } = await axios.get("/api/returns");
-      const existing = (allReturns || []).find(
+      const currentUser = getCurrentUser();
+
+      // 1 Check if a return already exists for this request + tool
+      const { data: existingReturns } = await axios.get("/api/returns");
+      const existing = (existingReturns || []).find(
         (r) =>
-          String(r.request_id) === String(request._id) &&
-          (String(r.tool_id) === String(it.tool_id) || String(r.tool_id) === String(it._id))
+          String(r.request_id) === String(request.request_id) &&
+          String(r.tool_id) === String(it.tool_id)
       );
 
+      // 2 Prepare payload for insert or update
       const payload = {
-        request_id: request._id,
-        tool_id: it.tool_id || it._id,
+        request_id: request.request_id,
+        tool_id: it.tool_id,
         quantity: it.requested_qty || it.quantity || 1,
-        status: status === "Returned" ? "Returned" :
-                status === "Needs Replacement" ? "Needs Replacement" : "Reserved",
+        status:
+          status === "Returned"
+            ? "Returned"
+            : status === "Needs Replacement"
+            ? "Needs Replacement"
+            : "Reserved",
         remarks,
-        returned_by: getCurrentUser()._id || getCurrentUser().user_id || "system",
+        returned_to: currentUser?.user_id || 1, // FK safety fallback
         return_date:
           status === "Returned" || status === "Needs Replacement"
-            ? new Date().toISOString().split("T")[0]
-            : "",
+            ? new Date().toISOString().split("T")[0] // yyyy-mm-dd
+            : null,
       };
 
+      // 3 Upsert: update existing or create new
       if (existing) {
-        await axios.put(`/api/returns/${existing._id}`, payload);
+        await axios.put(`/api/returns/${existing.return_id}`, payload);
       } else {
         await axios.post("/api/returns", payload);
       }
 
+      // 4 Update main request status to 4 (Returned)
       if (request.status_id !== 4) {
-        await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 4 });
-        setRequest((r) => ({ ...r, status_id: 4 }));
+        const { data } = await axios.put(`/api/borrow-requests/${request.request_id}`, {
+          status_id: 4,
+        });
+        setRequest((r) => ({ ...r, ...data.updated }));
       }
     } catch (err) {
       console.error("Error upserting return:", err);
@@ -297,7 +325,7 @@ const RequestApprovedAdmin = () => {
     setItemStatuses(updated);
 
     if (["Returned", "Needs Replacement"].includes(value)) {
-      await upsertReturnForItem(index, value); // pass it explicitly
+      await upsertReturnForItem(index, value);
     }
   };
 
@@ -312,9 +340,15 @@ const RequestApprovedAdmin = () => {
   const handleTransactionComplete = async () => {
     if (!allReturnedGood || !request) return;
     try {
-      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 5 });
-      await axios.post(`/api/borrow-requests/${request._id}/generate-pdf-custodian`);
-      setRequest((r) => ({ ...r, status_id: 5 }));
+      const { data: updateRes } = await axios.put(
+        `/api/borrow-requests/${request.request_id}`,
+        { status_id: 5 }
+      );
+      await axios.post(
+        `/api/borrow-requests/${request.request_id}/generate-pdf-custodian`
+      );
+
+      setRequest((r) => ({ ...r, ...updateRes.updated }));
       setShowModal(true);
     } catch (err) {
       console.error("Error completing transaction:", err);
@@ -356,7 +390,7 @@ const RequestApprovedAdmin = () => {
 
       <main style={styles.main}>
         <div style={styles.header}>
-          <h1>Request No. {request ? request.request_slip_id || request._id : "—"}</h1>
+          <h1>Request No. {request ? request.request_slip_id || request.request_id : "—"}</h1>
           <a
             href="/requests-admin"
             style={{ ...styles.goBack, opacity: hoverBack ? 0.8 : 1 }}

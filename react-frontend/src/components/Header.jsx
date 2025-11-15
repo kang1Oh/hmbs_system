@@ -158,7 +158,7 @@ function Header() {
                     color: window.location.pathname === '/equipment' ? '#f6c235' : 'white'
                   }}
                 >
-                  Home
+                  Catalogue
                 </Link>
               </li>
               <li>

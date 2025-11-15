@@ -66,7 +66,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
         formDataObj.append("image", imageFile); // must match multer field
       }
 
-      await axios.put(`/api/tools/${tool._id}`, formDataObj, {
+      await axios.put(`/api/tools/${tool.tool_id}`, formDataObj, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -214,7 +214,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                   >
                     <option value="">Select category</option>
                     {categories.map(cat => (
-                      <option key={cat._id} value={cat.category_id}>
+                      <option key={cat.category_id} value={cat.category_id}>
                         {cat.category_name}
                       </option>
                     ))}

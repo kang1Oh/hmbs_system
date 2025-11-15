@@ -1,52 +1,88 @@
 // routes/groups_routes.js
 const express = require('express');
 const router = express.Router();
-const { groups } = require('../models/db');
+const pool = require('../models/db');
 
-router.get('/', (req, res) => {
-  groups.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs);
-  });
+// ✅ GET all groups
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM groups ORDER BY group_id ASC;');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// GET all group members for a given request_id
-router.get('/request/:requestId', (req, res) => {
-  groups.find({ request_id: req.params.requestId }, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs);
-  });
+// ✅ GET all group members for a given request_id
+router.get('/request/:requestId', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM groups WHERE request_id = $1 ORDER BY group_id ASC;', [req.params.requestId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.post('/', (req, res) => {
-  groups.insert(req.body, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(newDoc);
-  });
+// ✅ POST create a new group entry
+router.post('/', async (req, res) => {
+  try {
+    const { request_id, user_id, is_leader } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO groups (request_id, user_id, is_leader)
+       VALUES ($1, $2, $3)
+       RETURNING *;`,
+      [request_id, user_id, is_leader ?? false]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.get('/:id', (req, res) => {
-  groups.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Group not found' });
-    res.json(doc);
-  });
+// ✅ GET group by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM groups WHERE group_id = $1;', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Group not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.put('/:id', (req, res) => {
-  groups.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numUpdated) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numUpdated === 0) return res.status(404).json({ message: 'Group not found' });
-    res.json({ message: 'Group updated successfully' });
-  });
+// ✅ UPDATE group by ID
+router.put('/:id', async (req, res) => {
+  try {
+    const { request_id, user_id, is_leader} = req.body;
+
+    const result = await pool.query(
+      `UPDATE groups
+       SET request_id = $1,
+           user_id = $2,
+           is_leader = $3
+       WHERE group_id = $4
+       RETURNING *;`,
+      [request_id, user_id, is_leader ?? false, req.params.id]
+    );
+
+    if (result.rowCount === 0) return res.status(404).json({ message: 'Group not found' });
+    res.json({ message: 'Group updated successfully', updated: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.delete('/:id', (req, res) => {
-  groups.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'Group not found' });
+// ✅ DELETE group by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM groups WHERE group_id = $1 RETURNING *;', [req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ message: 'Group not found' });
     res.json({ message: 'Group deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

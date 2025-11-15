@@ -2,6 +2,8 @@ import React from 'react';
 import image2 from '../assets/request.png';
 
 const TransactionModal = ({ onClose }) => {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
     <div style={{
       position: 'fixed',
@@ -59,16 +61,19 @@ const TransactionModal = ({ onClose }) => {
 
         <button
           onClick={onClose}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
           style={{
             border: '1px solid #991F1F',
-            backgroundColor: '#ffffff',
-            color: '#991F1F',
+            backgroundColor: hovered ? '#991F1F' : '#ffffff',
+            color: hovered ? '#ffffff' : '#991F1F',
             fontWeight: 'bold',
             fontSize: '16px',
             padding: '8px 30px',
             borderRadius: '24px',
             cursor: 'pointer',
-            fontFamily: 'Poppins, Sans-serif'
+            fontFamily: 'Poppins, Sans-serif',
+            transition: 'background-color 150ms ease, color 150ms ease'
           }}
         >
           Done

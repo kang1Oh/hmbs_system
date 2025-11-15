@@ -123,13 +123,7 @@ const AddNewItemAdmin = () => {
     }
 
     try {
-      const res = await axios.get("/api/tools");
-      const tools = res.data;
-      const maxId = tools.length > 0 ? Math.max(...tools.map(t => parseInt(t.tool_id))) : 0;
-      const newToolId = (maxId + 1).toString();
-
       const formDataObj = new FormData();
-      formDataObj.append("tool_id", newToolId);
       formDataObj.append("category_id", formData.category);
       formDataObj.append("name", formData.itemName);
       formDataObj.append("location", formData.location);
@@ -150,13 +144,12 @@ const AddNewItemAdmin = () => {
       setIsItemAddedModalOpen(true);
       setFormData(initialFormData);
       setSelectedFile(null);
-      setErrors({}); 
+      setErrors({});
     } catch (error) {
       console.error("Error adding new tool:", error);
       alert(error.response?.data?.error || "Failed to add tool");
     }
   };
-
 
   return (
     <div style={styles.layout}>
@@ -224,7 +217,7 @@ const AddNewItemAdmin = () => {
                 >
                   <option value="">Select category</option>
                   {categories.map((cat) => (
-                    <option key={cat._id} value={cat.category_id}>
+                    <option key={cat.category_id} value={cat.category_id}>
                       {cat.category_name}
                     </option>
                   ))}

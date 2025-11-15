@@ -52,5 +52,5 @@ This system promotes accountability and professional responsibility among studen
   <img src="https://img.shields.io/badge/Frontend-React-61dafb?logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Backend-Express.js-000000?logo=express&logoColor=white" />
   <img src="https://img.shields.io/badge/Runtime-Node.js-339933?logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/Database-NeDB%20→%20PostgreSQL-336791?logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-336791?logo=postgresql&logoColor=white" />
 </p>

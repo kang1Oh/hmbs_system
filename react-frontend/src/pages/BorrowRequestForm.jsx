@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import tempItemImg from "../assets/images/temp-item-img.png";
 import { FiTrash2 } from "react-icons/fi";
 import RequestSubmittedModal from "../components/RequestSubmittedModal";
 import { useCart } from "../context/CartContext";
@@ -129,7 +128,7 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle, role }) {
         <ul style={{position: "absolute", listStyle: "none", margin: 0, padding: "6px 8px", width: "100%", borderRadius: "6px", zIndex: 10, maxHeight: "160px", overflowY: "auto", background: "#fff", border: "1px solid #030303ff", fontSize: "14px",}}>
           {suggestions.map((s) => (
             <li
-              key={s._id}
+              key={s.user_id}
               style={{ cursor: "pointer", padding: "5px" }}
               onMouseDown={() => {
                 onSelect(s);
@@ -155,9 +154,9 @@ function AutocompleteInput({ value, onChange, onSelect, inputStyle, role }) {
 function BorrowRequestForm() {
   const { cart, clearCart } = useCart();
 
-  const [groupMembers, setGroupMembers] = useState([{ _id: null, name: "" }]);
-  const [groupLeader, setGroupLeader] = useState({ _id: null, name: "" });
-  const [instructor, setInstructor] = useState({ _id: null, name: "" });
+  const [groupMembers, setGroupMembers] = useState([{ user_id: null, name: "" }]);
+  const [groupLeader, setGroupLeader] = useState({ user_id: null, name: "" });
+  const [instructor, setInstructor] = useState({ user_id: null, name: "" });
   const today = new Date().toISOString().split("T")[0];
   const [dateRequested, setDateRequested] = useState(today);
   const [dateUse, setDateUse] = useState("");
@@ -176,7 +175,7 @@ function BorrowRequestForm() {
     const checkOngoing = async () => {
       try {
         const { data: requests } = await axios.get(
-          `/api/borrow-requests/by-group-or-user/${storedUser._id}`
+          `/api/borrow-requests/by-group-or-user/${storedUser.user_id}`
         );
         const ongoing = requests.some(
           (r) => r.status_id !== 5 && r.status_id !== 6
@@ -190,20 +189,20 @@ function BorrowRequestForm() {
   }, []);
 
   useEffect(() => {
-    const hasEmptyMember = groupMembers.some((m) => !m._id || !m.name.trim());
-    const validLeader = groupLeader._id && groupLeader.name.trim();
-    const InstructorValid = instructor._id && instructor.name.trim();
+    const hasEmptyMember = groupMembers.some((m) => m.user_id === null || !m.name.trim());
+    const validLeader = groupLeader.user_id !== null && groupLeader.name.trim();
+    const InstructorValid = instructor.user_id !== null && instructor.name.trim();
     setIsFormValid(
       dateRequested &&
-        dateUse &&
-        timeUse &&
-        subject &&
-        validLeader &&
-        InstructorValid &&
-        !hasEmptyMember &&
-        cart.length > 0
+      dateUse &&
+      timeUse &&
+      subject &&
+      validLeader &&
+      InstructorValid &&
+      !hasEmptyMember &&
+      cart.length > 0
     );
-  }, [dateRequested, dateUse, timeUse, subject, groupLeader, groupMembers, cart]);
+  }, [dateRequested, dateUse, timeUse, subject, groupLeader, groupMembers, cart, instructor]);
 
   const handleMemberChange = (idx, val) => {
     const updated = [...groupMembers];
@@ -217,14 +216,14 @@ function BorrowRequestForm() {
 
     try {
       const payload = {
-        user_id: storedUser._id,
+        user_id: storedUser.user_id,
         status_id: 1,
         request_slip_id: Math.floor(Math.random() * 90000) + 10000,
         lab_date: dateUse,
-        date_requested: new Date().toISOString(),
+        date_requested: new Date().toISOString().replace('Z', '+08:00'),
         lab_time: timeUse,
         subject: subject,
-        instructor_id: instructor._id,
+        instructor_id: instructor.user_id,
       };
 
       // create borrow request
@@ -232,10 +231,10 @@ function BorrowRequestForm() {
 
       // insert group entries
       const groupEntries = [
-        { request_id: newRequest._id, user_id: groupLeader._id, is_leader: true },
+        { request_id: newRequest.request_id, user_id: groupLeader.user_id, is_leader: true },
         ...groupMembers.map((m) => ({
-          request_id: newRequest._id,
-          user_id: m._id,
+          request_id: newRequest.request_id,
+          user_id: m.user_id,
           is_leader: false,
         })),
       ];
@@ -245,7 +244,7 @@ function BorrowRequestForm() {
       await Promise.all(
         cart.map((item) =>
           axios.post("/api/borrow-items", {
-            request_id: newRequest._id,
+            request_id: newRequest.request_id,
             tool_id: item.tool_id,
             requested_qty: item.selectedQty,
           })
@@ -253,7 +252,7 @@ function BorrowRequestForm() {
       );
 
       // generate PDF
-      await axios.post(`/api/borrow-requests/${newRequest._id}/generate-pdf-student`);
+      await axios.post(`/api/borrow-requests/${newRequest.request_id}/generate-pdf-student`);
 
       // clear state
       clearCart();
@@ -261,9 +260,9 @@ function BorrowRequestForm() {
       setDateRequested("");
       setTimeUse("");
       setSubject("");
-      setInstructor({ _id: null, name: "" });
-      setGroupLeader({ _id: null, name: "" });
-      setGroupMembers([{ _id: null, name: "" }]);
+      setInstructor({ user_id: null, name: "" });
+      setGroupLeader({ user_id: null, name: "" });
+      setGroupMembers([{ user_id: null, name: "" }]);
       setIsModalOpen(true);
     } catch (err) {
       console.error("Submit failed:", err);
@@ -351,8 +350,8 @@ function BorrowRequestForm() {
               <AutocompleteInput
                 role={2} // instructor
                 value={instructor.name}
-                onChange={(val) => setInstructor({ _id: null, name: val })}
-                onSelect={(u) => setInstructor({ _id: u._id, name: u.name })}
+                onChange={(val) => setInstructor({ user_id: null, name: val })}
+                onSelect={(u) => setInstructor({ user_id: u.user_id, name: u.name })}
                 inputStyle={styles.input}
               />
             </div>
@@ -375,8 +374,8 @@ function BorrowRequestForm() {
               <AutocompleteInput
                 role={4} // student
                 value={groupLeader.name}
-                onChange={(val) => setGroupLeader({ _id: null, name: val })}
-                onSelect={(u) => setGroupLeader({ _id: u._id, name: u.name })}
+                onChange={(val) => setGroupLeader({ user_id: null, name: val })}
+                onSelect={(u) => setGroupLeader({ user_id: u.user_id, name: u.name })}
                 inputStyle={styles.input}
               />
             </div>
@@ -393,8 +392,8 @@ function BorrowRequestForm() {
                 <AutocompleteInput
                   role={4} // student
                   value={m.name}
-                  onChange={(val) => handleMemberChange(idx, { _id: null, name: val })}
-                  onSelect={(u) => handleMemberChange(idx, { _id: u._id, name: u.name })}
+                  onChange={(val) => handleMemberChange(idx, { user_id: null, name: val })}
+                  onSelect={(u) => handleMemberChange(idx, { user_id: u.user_id, name: u.name })}
                   inputStyle={styles.input}
                 />
               </div>
@@ -422,7 +421,7 @@ function BorrowRequestForm() {
             </div>
           ))}
           <button
-            onClick={() => setGroupMembers([...groupMembers, { _id: null, name: "" }])}
+            onClick={() => setGroupMembers([...groupMembers, { user_id: null, name: "" }])}
             style={{
               ...styles.submitBtn,
               backgroundColor: "#fff",
@@ -453,7 +452,7 @@ function BorrowRequestForm() {
             <p style={{ color: "#777" }}>Your cart is empty.</p>
           ) : (
             cart.map((item) => (
-              <div key={item._id} style={styles.itemCard}>
+              <div key={item.tool_id} style={styles.itemCard}>
                 <img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt={item.name} style={styles.img} />
                 <div>
                   <strong>{item.name}</strong>

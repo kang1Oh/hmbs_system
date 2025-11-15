@@ -3,6 +3,7 @@
     "axios": "^1.10.0",
     "axios-cookiejar-support": "^5.0.5",
     "bcrypt": "^6.0.0",
+    "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
@@ -17,7 +18,8 @@
     "nedb": "^1.8.0",
     "nedb-session-store": "^1.1.2",
     "nedm": "^0.0.1",
-    "pdfkit": "^0.17.2"
+    "pdfkit": "^0.17.2",
+    "pg": "^8.16.3"
   },
   "scripts": {
     "start": "node server.js",

@@ -89,7 +89,7 @@ function TransactionPage() {
       const storedUser = JSON.parse(localStorage.getItem("user"));
       if (!storedUser) return;
 
-      const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser._id}`);
+      const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser.user_id}`);
       requests.sort((a, b) => new Date(b.date_requested) - new Date(a.date_requested));
 
       const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
@@ -131,12 +131,12 @@ function TransactionPage() {
       if (!currentRequest) return;
 
       const { data: allApprovals } = await axios.get("/api/approvals");
-      const requestApprovals = allApprovals.filter(a => a.request_id === currentRequest._id);
+      const requestApprovals = allApprovals.filter(a => a.request_id === currentRequest.request_id);
 
       const { data: allUsers } = await axios.get(`/api/users`);
       const enrichedApprovals = requestApprovals.map(a => ({
         ...a,
-        name: a.name || allUsers.find(u => u._id === a.user_id)?.name || "Unknown",
+        name: a.name || allUsers.find(u => u.user_id === a.user_id)?.name || "Unknown",
       }));
 
       const roleOrder = { 2: 1, 3: 2, 1: 3 };
@@ -156,7 +156,7 @@ function TransactionPage() {
 
       // fetch items & groups
       const { data: allItems } = await axios.get(`/api/borrow-items`);
-      const requestItems = allItems.filter(i => i.request_id === currentRequest._id);
+      const requestItems = allItems.filter(i => i.request_id === currentRequest.request_id);
       const enrichedItems = await Promise.all(
         requestItems.map(async (i) => {
           const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
@@ -164,15 +164,15 @@ function TransactionPage() {
         })
       );
 
-      const { data: groupMembers } = await axios.get(`/api/groups/request/${currentRequest._id}`);
+      const { data: groupMembers } = await axios.get(`/api/groups/request/${currentRequest.request_id}`);
       const enrichedGroups = groupMembers.map(gm => {
-        const user = allUsers.find(u => u._id === gm.user_id);
+        const user = allUsers.find(u => u.user_id === gm.user_id);
         return { ...gm, user };
       });
 
-      const instructor = allUsers.find(u => u._id === currentRequest.instructor_id);
+      const instructor = allUsers.find(u => u.user_id === currentRequest.instructor_id);
       const { data: allReturns } = await axios.get("/api/returns");
-      const requestReturns = allReturns.filter(r => String(r.request_id) === String(currentRequest._id));
+      const requestReturns = allReturns.filter(r => String(r.request_id) === String(currentRequest.request_id));
       setReturns(requestReturns);
 
       if (active) {
@@ -200,7 +200,7 @@ function TransactionPage() {
 
       try {
         // 1. get all requests related to this user
-        const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser._id}`);
+        const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser.user_id}`);
 
         // 2. only keep completed ones (status_id = 5)
         const completed = requests.filter(r => r.status_id === 5);
@@ -215,7 +215,7 @@ function TransactionPage() {
         const enrichedRequests = await Promise.all(
           completed.map(async (req) => {
             // items
-            const requestItems = allItems.filter(i => i.request_id === req._id);
+            const requestItems = allItems.filter(i => i.request_id === req.request_id);
             const enrichedItems = await Promise.all(
               requestItems.map(async (i) => {
                 const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
@@ -230,16 +230,16 @@ function TransactionPage() {
             );
 
             // groups
-            const { data: groupMembers } = await axios.get(`/api/groups/request/${req._id}`);
+            const { data: groupMembers } = await axios.get(`/api/groups/request/${req.request_id}`);
 
-            // join groups → users by `_id`
+            // join groups → users by `user_id`
             const enrichedGroups = groupMembers.map(gm => {
-              const user = allUsers.find(u => u._id === gm.user_id); // match NeDB _id
+              const user = allUsers.find(u => u.user_id === gm.user_id); // match NeDB _id
               return { ...gm, user };
             });
 
             // find instructor 
-            const instructor = allUsers.find(u => u._id === req.instructor_id);
+            const instructor = allUsers.find(u => u.user_id === req.instructor_id);
 
             return { ...req, items: enrichedItems, groupMembers: enrichedGroups, instructor: instructor || null };
           })
@@ -432,7 +432,7 @@ function TransactionPage() {
                         <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
                           <div style={{ flex: "1 1 45%" }}>
                           <p><strong>Date Requested:</strong> {activeRequest.date_requested ? new Date(activeRequest.date_requested).toISOString().split('T')[0] : ''}</p>
-                          <p><strong>Date Use:</strong> {activeRequest.lab_date}</p>
+                          <p><strong>Date Use:</strong> {activeRequest.lab_date ? new Date(activeRequest.lab_date).toISOString().split('T')[0] : ''}</p>
                           <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
                           <p><strong>Subject:</strong> {activeRequest.subject}</p>
                           <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
@@ -457,7 +457,7 @@ function TransactionPage() {
                                   <p><strong>Group Members:</strong></p>
                                   <ul style={{ marginLeft: "18px", fontSize: "14px" }}>
                                     {members.map(m => (
-                                      <li key={m._id}>{m.user?.name || "(unknown)"}</li>
+                                      <li key={m.user_id}>{m.user?.name || "(unknown)"}</li>
                                     ))}
                                   </ul>
                                 </div>
@@ -503,16 +503,14 @@ function TransactionPage() {
                         <td style={tableCell}>₱ {item.price}</td>
                         <td style={tableCell}>
                           {(() => {
-                            const requestId = activeRequest._id;
+                            const requestId = activeRequest.request_id;
                             const statusId = activeRequest.status_id;
 
                             // 🔍 find any return entry for this tool in this request
                             const itemReturn = returns?.find(
                               (r) =>
                                 String(r.request_id) === String(requestId) &&
-                                (String(r.tool_id) === String(item.tool_id) ||
-                                String(r.tool_id) === String(item._id) ||
-                                String(r.tool_id) === String(item.tool_numeric_id))
+                                String(r.tool_id) === String(item.tool_id)
                             );
 
                             // determine per-item status
@@ -579,7 +577,7 @@ function TransactionPage() {
 
                 {historyRequests.map((req, index) => (
                   <div
-                  key={req._id}
+                  key={req.request_id}
                   style={{
                     border: "0.5px solid #ccc",
                     borderRadius: "10px",
@@ -623,7 +621,7 @@ function TransactionPage() {
                     <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px" }}>
                       <div style={{ flex: "1 1 45%" }}>
                       <p><strong>Date Requested:</strong> {req.date_requested ? new Date(req.date_requested).toISOString().split('T')[0] : ''}</p>
-                      <p><strong>Date Use:</strong> {req.lab_date}</p>
+                      <p><strong>Date Use:</strong> {req.lab_date ? new Date(req.lab_date).toISOString().split('T')[0] : ''}</p>
                       <p><strong>Time Use:</strong> {req.lab_time}</p>
                       <p><strong>Subject:</strong> {req.subject}</p>
                       <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
@@ -648,7 +646,7 @@ function TransactionPage() {
                                       <p><strong>Group Members:</strong></p>
                                       <ul style={{ marginLeft: "18px", fontSize: "13.5px" }}>
                                         {members.map(m => (
-                                          <li key={m._id}>{m.user?.name || "(unknown)"}</li>
+                                          <li key={m.user_id}>{m.user?.name || "(unknown)"}</li>
                                         ))}
                                       </ul>
                                     </div>

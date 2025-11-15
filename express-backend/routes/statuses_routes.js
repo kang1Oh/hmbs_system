@@ -1,47 +1,74 @@
 // routes/statuses_routes.js
 const express = require('express');
 const router = express.Router();
-const { statuses } = require('../models/db');
+const pool = require('../models/db');
 
-router.get('/', (req, res) => {
-  statuses.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(docs);
-  });
+// GET all statuses
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT status_id AS id, status_label FROM statuses ORDER BY status_id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.post('/', (req, res) => {
+// CREATE a new status
+router.post('/', async (req, res) => {
   const { status_label } = req.body;
   if (!status_label) return res.status(400).json({ error: 'status_label is required' });
 
-  statuses.insert({ status_label }, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err });
-    res.status(201).json(newDoc);
-  });
+  try {
+    const result = await pool.query(
+      'INSERT INTO statuses (status_label) VALUES ($1) RETURNING status_id AS id, status_label',
+      [status_label]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.get('/:id', (req, res) => {
-  statuses.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!doc) return res.status(404).json({ message: 'Status not found' });
-    res.json(doc);
-  });
+// GET a single status by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT status_id AS id, status_label FROM statuses WHERE status_id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Status not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.put('/:id', (req, res) => {
-  statuses.update({ _id: req.params.id }, { $set: req.body }, {}, (err, numUpdated) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numUpdated === 0) return res.status(404).json({ message: 'Status not found' });
-    res.json({ message: 'Status updated successfully' });
-  });
+// UPDATE a status by ID
+router.put('/:id', async (req, res) => {
+  const { status_label } = req.body;
+  if (!status_label) return res.status(400).json({ error: 'status_label is required' });
+
+  try {
+    const result = await pool.query(
+      'UPDATE statuses SET status_label = $1 WHERE status_id = $2 RETURNING *',
+      [status_label, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Status not found' });
+    res.json({ message: 'Status updated successfully', updated: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.delete('/:id', (req, res) => {
-  statuses.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'Status not found' });
+// DELETE a status by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM statuses WHERE status_id = $1 RETURNING *', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Status not found' });
     res.json({ message: 'Status deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

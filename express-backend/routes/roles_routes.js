@@ -1,73 +1,72 @@
+// routes/roles_routes.js
 const express = require('express');
 const router = express.Router();
-const { roles } = require('../models/db');
+const pool = require('../models/db');
 
 // GET all roles
-router.get('/', (req, res) => {
-  roles.find({}, (err, docs) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-
-    const rolesFormatted = docs.map(doc => ({
-      id: doc.id,
-      name: doc.name
-    }));
-
-    res.json(rolesFormatted);
-  });
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT role_id AS id, role_name AS name FROM roles ORDER BY role_id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // CREATE a new role
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { id, name } = req.body;
 
-  // Basic validation
-  if (!id || !name) {
-    return res.status(400).json({ error: 'Both id and name are required' });
+  if (!name) {
+    return res.status(400).json({ error: 'Role name is required' });
   }
 
-  const newRole = { id, name };
-
-  roles.insert(newRole, (err, newDoc) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-
-    // Respond with your custom ID and name
-    res.status(201).json({
-      id: newDoc.id,
-      name: newDoc.name
-    });
-  });
+  try {
+    const result = await pool.query(
+      'INSERT INTO roles (role_name) VALUES ($1) RETURNING role_id AS id, role_name AS name',
+      [name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET role by ID
-router.get('/:id', (req, res) => {
-  roles.findOne({ _id: req.params.id }, (err, doc) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-    if (!doc) return res.status(404).json({ message: 'Role not found' });
-    res.json(doc);
-  });
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT role_id AS id, role_name AS name FROM roles WHERE role_id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Role not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // UPDATE a role by ID
-router.put('/:id', (req, res) => {
-  const updates = {
-    name: req.body.name,
-    description: req.body.description
-  };
-
-  roles.update({ _id: req.params.id }, { $set: updates }, {}, (err, numReplaced) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-    if (numReplaced === 0) return res.status(404).json({ message: 'Role not found' });
-    res.json({ message: 'Role updated successfully' });
-  });
+router.put('/:id', async (req, res) => {
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE roles SET role_name = $1 WHERE role_id = $2 RETURNING *',
+      [name, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Role not found' });
+    res.json({ message: 'Role updated successfully', updated: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE a role by ID
-router.delete('/:id', (req, res) => {
-  roles.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-    if (err) return res.status(500).json({ error: err.message || err });
-    if (numRemoved === 0) return res.status(404).json({ message: 'Role not found' });
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM roles WHERE role_id = $1 RETURNING *', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Role not found' });
     res.json({ message: 'Role deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

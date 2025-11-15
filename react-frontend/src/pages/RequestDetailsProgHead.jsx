@@ -34,7 +34,7 @@ const RequestDetailsProgHead = () => {
 
         // 3. Get borrow items and enrich with tool data
         const { data: allItems } = await axios.get('/api/borrow-items');
-        const requestItems = allItems.filter(i => i.request_id === reqData._id);
+        const requestItems = allItems.filter(i => i.request_id === reqData.request_id);
 
         const enrichedItems = await Promise.all(
           requestItems.map(async (i) => {
@@ -52,7 +52,7 @@ const RequestDetailsProgHead = () => {
         setItems(enrichedItems);
 
         // 4. Get group members and enrich with user info
-        const { data: group } = await axios.get(`/api/groups/request/${reqData._id}`);
+        const { data: group } = await axios.get(`/api/groups/request/${reqData.request_id}`);
 
         const enrichedMembers = await Promise.all(
           group.map(async (gm) => {
@@ -73,8 +73,8 @@ const RequestDetailsProgHead = () => {
         const { data: approvals } = await axios.get('/api/approvals');
         const currentUser = JSON.parse(localStorage.getItem('user') || 'null') || {};
 
-        const approverId = currentUser._id;
-        const reqId = reqData._id;
+        const approverId = currentUser.user_id;
+        const reqId = reqData.request_id;
 
         const approval = approvals.find(a => 
           String(a.request_id) === String(reqId) &&
@@ -98,13 +98,12 @@ const RequestDetailsProgHead = () => {
     try {
       const currentUser = JSON.parse(localStorage.getItem('user'));
       const payload = {
-        request_id: request._id,
-        user_id: currentUser._id,
+        request_id: request.request_id,
+        user_id: currentUser.user_id,
         name: currentUser.name || 'Program Head',
         role_id: 3, 
         status_id: 2,
-        remarks: 'Approved request',
-        date_approved: new Date().toISOString()
+        remarks: 'Approved request'
       };
       await axios.post('/api/approvals', payload);
       setApprovalExists(true);
@@ -120,17 +119,16 @@ const RequestDetailsProgHead = () => {
     try {
       const currentUser = JSON.parse(localStorage.getItem('user'));
       const payload = {
-        request_id: request._id,
-        user_id: currentUser._id,
+        request_id: request.request_id,
+        user_id: currentUser.user_id,
         name: currentUser.name || 'Program Head',
         role_id: 3, 
         status_id: 6, 
-        remarks: reason,
-        date_approved: new Date().toISOString()
+        remarks: reason
       };
       await axios.post('/api/approvals', payload);
 
-      await axios.put(`/api/borrow-requests/${request._id}`, { status_id: 6 });
+      await axios.put(`/api/borrow-requests/${request.request_id}`, { status_id: 6 });
 
       setApprovalExists(true);
       setShowRejectModal(false);
@@ -264,7 +262,7 @@ const RequestDetailsProgHead = () => {
           </thead>
           <tbody>
             {members.others?.map((m, i) => (
-              <tr key={m._id}>
+              <tr key={m.user_id}>
                 <td style={styles.td}>{i + 1}</td>
                 <td style={styles.td}>{m.user?.name || '(unknown)'}</td>
                 <td style={styles.td}>{m.user?.email || '(unknown)'}</td>
@@ -298,7 +296,7 @@ const RequestDetailsProgHead = () => {
           </thead>
           <tbody>
             {items.map((item, i) => (
-              <tr key={item._id}>
+              <tr key={item.tool_id}>
                 <td style={styles.td}>{i + 1}</td>
                 <td style={styles.td}><img src={`${import.meta.env.VITE_API_BASE_URL}${item.img}` || `${import.meta.env.VITE_API_BASE_URL}uploads/tools/default.png`} alt={item.name} style={styles.itemImage} /></td>
                 <td style={styles.td}>{item.name}</td>
