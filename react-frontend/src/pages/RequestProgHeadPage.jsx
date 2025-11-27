@@ -100,7 +100,7 @@ const RequestProgHeadPage = () => {
       textAlign: 'center',
       backgroundColor: '#a52a2a',
       color: 'white',
-      fontWeight: 100,
+      fontWeight: 400,
     },
     statusBadge: {
       padding: '0.4rem 1rem',
