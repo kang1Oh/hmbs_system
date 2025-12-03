@@ -57,7 +57,7 @@ function AboutPage() {
   const staffSectionStyle = {
     border: '1px solid #991F1F',
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    padding: '60px 60px 45px', 
+    padding: '60px 60px 45px',
     margin: '10px auto 60px',
     maxWidth: '1100px',
     borderRadius: '18px',
@@ -114,10 +114,10 @@ function AboutPage() {
   };
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header />
 
-      <div style={containerStyle}>
+      <div style={{ ...containerStyle, flex: 1 }}>
         {/* Top Banner Image */}
         <img src={aboutHeaderBg} alt="About Header" style={headerImageStyle} />
 
@@ -136,7 +136,7 @@ function AboutPage() {
       </div>
 
       <Footer />
-    </>
+    </div>
   );
 }
 

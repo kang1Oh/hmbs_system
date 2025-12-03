@@ -84,113 +84,113 @@ function TransactionPage() {
 
   //active request fetch
   useEffect(() => {
-  const fetchActiveRequest = async () => {
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (!storedUser) return;
+    const fetchActiveRequest = async () => {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (!storedUser) return;
 
-      const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser.user_id}`);
-      requests.sort((a, b) => new Date(b.date_requested) - new Date(a.date_requested));
+        const { data: requests } = await axios.get(`/api/borrow-requests/by-group-or-user/${storedUser.user_id}`);
+        requests.sort((a, b) => new Date(b.date_requested) - new Date(a.date_requested));
 
-      const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
-      const denied = requests.find(r => r.status_id === 6);
-      const latest = requests[0];
-      const isLatestCompleted = latest && latest.status_id === 5;
+        const active = requests.find(r => r.status_id !== 5 && r.status_id !== 6);
+        const denied = requests.find(r => r.status_id === 6);
+        const latest = requests[0];
+        const isLatestCompleted = latest && latest.status_id === 5;
 
-      // 🟢 pick the current request FIRST
-      const currentRequest = active || denied || null;
+        // 🟢 pick the current request FIRST
+        const currentRequest = active || denied || null;
 
-      // 🧹 ensure clean slate when latest request is completed
-      if (isLatestCompleted) {
-        setActiveRequest(null);
-        setDeniedRequest(null);
-        setApprovals([]);
-        setReturns([]);
-        setRemarks("No active borrow request yet.");
-        setCurrentStep(0);
-        return;
-      }
+        // 🧹 ensure clean slate when latest request is completed
+        if (isLatestCompleted) {
+          setActiveRequest(null);
+          setDeniedRequest(null);
+          setApprovals([]);
+          setReturns([]);
+          setRemarks("No active borrow request yet.");
+          setCurrentStep(0);
+          return;
+        }
 
-      // 🧠 branch logic
-      if (denied && !active) {
-        setActiveRequest(null);
-        setDeniedRequest(denied);
-        setCurrentStep(1);
-        setRemarks("Your borrowing request was denied. See below for details.");
-      } else if (active) {
-        setDeniedRequest(null);
-        setActiveRequest(active);
-        setCurrentStep(Number(active.status_id));
-      } else {
-        setActiveRequest(null);
-        setDeniedRequest(null);
-        setApprovals([]);
-      }
+        // 🧠 branch logic
+        if (denied && !active) {
+          setActiveRequest(null);
+          setDeniedRequest(denied);
+          setCurrentStep(1);
+          setRemarks("Your borrowing request was denied. See below for details.");
+        } else if (active) {
+          setDeniedRequest(null);
+          setActiveRequest(active);
+          setCurrentStep(Number(active.status_id));
+        } else {
+          setActiveRequest(null);
+          setDeniedRequest(null);
+          setApprovals([]);
+        }
 
-      // ✅ approvals, items, group, returns — only if currentRequest exists
-      if (!currentRequest) return;
+        // ✅ approvals, items, group, returns — only if currentRequest exists
+        if (!currentRequest) return;
 
-      const { data: allApprovals } = await axios.get("/api/approvals");
-      const requestApprovals = allApprovals.filter(a => a.request_id === currentRequest.request_id);
+        const { data: allApprovals } = await axios.get("/api/approvals");
+        const requestApprovals = allApprovals.filter(a => a.request_id === currentRequest.request_id);
 
-      const { data: allUsers } = await axios.get(`/api/users`);
-      const enrichedApprovals = requestApprovals.map(a => ({
-        ...a,
-        name: a.name || allUsers.find(u => u.user_id === a.user_id)?.name || "Unknown",
-      }));
+        const { data: allUsers } = await axios.get(`/api/users`);
+        const enrichedApprovals = requestApprovals.map(a => ({
+          ...a,
+          name: a.name || allUsers.find(u => u.user_id === a.user_id)?.name || "Unknown",
+        }));
 
-      const roleOrder = { 2: 1, 3: 2, 1: 3 };
-      const sortedApprovals = enrichedApprovals.sort((a, b) => {
-        const orderA = roleOrder[a.role_id] || 99;
-        const orderB = roleOrder[b.role_id] || 99;
-        return orderA - orderB;
-      });
-      setApprovals(sortedApprovals);
-
-      // remarks per status
-      if (currentRequest.status_id === 1) setRemarks("Borrowing request has been submitted for approval.");
-      else if (currentRequest.status_id === 2) setRemarks("Your borrow request has been approved.");
-      else if (currentRequest.status_id === 3) setRemarks("Your items have been released.");
-      else if (currentRequest.status_id === 4) setRemarks("Your returned items are currently under review.");
-      else if (currentRequest.status_id === 5) setRemarks("All items have been returned in good condition.");
-
-      // fetch items & groups
-      const { data: allItems } = await axios.get(`/api/borrow-items`);
-      const requestItems = allItems.filter(i => i.request_id === currentRequest.request_id);
-      const enrichedItems = await Promise.all(
-        requestItems.map(async (i) => {
-          const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
-          return { ...i, name: tool.name, unit: tool.unit, price: tool.price, img: tool.img || itemImage };
-        })
-      );
-
-      const { data: groupMembers } = await axios.get(`/api/groups/request/${currentRequest.request_id}`);
-      const enrichedGroups = groupMembers.map(gm => {
-        const user = allUsers.find(u => u.user_id === gm.user_id);
-        return { ...gm, user };
-      });
-
-      const instructor = allUsers.find(u => u.user_id === currentRequest.instructor_id);
-      const { data: allReturns } = await axios.get("/api/returns");
-      const requestReturns = allReturns.filter(r => String(r.request_id) === String(currentRequest.request_id));
-      setReturns(requestReturns);
-
-      if (active) {
-        setActiveRequest({
-          ...currentRequest,
-          items: enrichedItems,
-          groupMembers: enrichedGroups,
-          instructor,
+        const roleOrder = { 2: 1, 3: 2, 1: 3 };
+        const sortedApprovals = enrichedApprovals.sort((a, b) => {
+          const orderA = roleOrder[a.role_id] || 99;
+          const orderB = roleOrder[b.role_id] || 99;
+          return orderA - orderB;
         });
+        setApprovals(sortedApprovals);
+
+        // remarks per status
+        if (currentRequest.status_id === 1) setRemarks("Borrowing request has been submitted for approval.");
+        else if (currentRequest.status_id === 2) setRemarks("Your borrow request has been approved.");
+        else if (currentRequest.status_id === 3) setRemarks("Your items have been released.");
+        else if (currentRequest.status_id === 4) setRemarks("Your returned items are currently under review.");
+        else if (currentRequest.status_id === 5) setRemarks("All items have been returned in good condition.");
+
+        // fetch items & groups
+        const { data: allItems } = await axios.get(`/api/borrow-items`);
+        const requestItems = allItems.filter(i => i.request_id === currentRequest.request_id);
+        const enrichedItems = await Promise.all(
+          requestItems.map(async (i) => {
+            const { data: tool } = await axios.get(`/api/tools/numeric/${i.tool_id}`);
+            return { ...i, name: tool.name, unit: tool.unit, price: tool.price, img: tool.img || itemImage };
+          })
+        );
+
+        const { data: groupMembers } = await axios.get(`/api/groups/request/${currentRequest.request_id}`);
+        const enrichedGroups = groupMembers.map(gm => {
+          const user = allUsers.find(u => u.user_id === gm.user_id);
+          return { ...gm, user };
+        });
+
+        const instructor = allUsers.find(u => u.user_id === currentRequest.instructor_id);
+        const { data: allReturns } = await axios.get("/api/returns");
+        const requestReturns = allReturns.filter(r => String(r.request_id) === String(currentRequest.request_id));
+        setReturns(requestReturns);
+
+        if (active) {
+          setActiveRequest({
+            ...currentRequest,
+            items: enrichedItems,
+            groupMembers: enrichedGroups,
+            instructor,
+          });
+        }
+
+      } catch (err) {
+        console.error("Error fetching active request:", err);
       }
+    };
 
-    } catch (err) {
-      console.error("Error fetching active request:", err);
-    }
-  };
-
-  fetchActiveRequest();
-}, []);
+    fetchActiveRequest();
+  }, []);
 
   //transaction history fetch
   useEffect(() => {
@@ -245,7 +245,7 @@ function TransactionPage() {
           })
         );
 
-        
+
         setHistoryRequests(enrichedRequests);
       } catch (err) {
         console.error("Failed to fetch transaction history:", err);
@@ -279,14 +279,14 @@ function TransactionPage() {
         </p>
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
           <div
-            style={{position: 'absolute',top: '48px',left: '8%',right: '8%',height: '2px',backgroundColor: '#991F1F',zIndex: 0}}
+            style={{ position: 'absolute', top: '48px', left: '8%', right: '8%', height: '2px', backgroundColor: '#991F1F', zIndex: 0 }}
           />
           {steps.map((label, index) => {
             const isCompleted = index < currentStep;
             return (
               <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, flex: 1 }}>
                 <div
-                  style={{width: '85px', height: '85px', borderRadius: '50%', backgroundColor: isCompleted ? '#991F1F' : '#fff', border: '2px solid #991F1F', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'}}
+                  style={{ width: '85px', height: '85px', borderRadius: '50%', backgroundColor: isCompleted ? '#991F1F' : '#fff', border: '2px solid #991F1F', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}
                 >
                   <img
                     src={progressChecked}
@@ -309,76 +309,76 @@ function TransactionPage() {
         {/* Approval Timeline */}
         {((current?.status_id && [1, 2, 3, 4, 5, 6].includes(current.status_id)) ||
           (deniedRequest?.status_id === 6)) && (
-          <div style={{ marginTop: '10px', padding: '24px', backgroundColor: '#fff', borderRadius: '10px' }}>
-            <hr style={{ margin: '10px 0 20px', border: 'none', borderTop: '1px solid #ddd' }} />
-            <p style={{ fontSize: '17px', fontWeight: 600, marginBottom: '16px' }}>Request No. {current.request_slip_id} Approval Timeline</p>
+            <div style={{ marginTop: '10px', padding: '24px', backgroundColor: '#fff', borderRadius: '10px' }}>
+              <hr style={{ margin: '10px 0 20px', border: 'none', borderTop: '1px solid #ddd' }} />
+              <p style={{ fontSize: '17px', fontWeight: 600, marginBottom: '16px' }}>Request No. {current.request_slip_id} Approval Timeline</p>
 
-            {approvals.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginLeft: '12px' }}>
-                {approvals.map((appr, i) => {
-                  const isDenied = appr.status_id === 6;
-                  const color = isDenied ? '#DC3545' : '#28A745';
-                  return (
-                    <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', position: 'relative' }}>
-                      {/* Connector line */}
-                      {i !== approvals.length - 1 && (
+              {approvals.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginLeft: '12px' }}>
+                  {approvals.map((appr, i) => {
+                    const isDenied = appr.status_id === 6;
+                    const color = isDenied ? '#DC3545' : '#28A745';
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', position: 'relative' }}>
+                        {/* Connector line */}
+                        {i !== approvals.length - 1 && (
+                          <div
+                            style={{ position: 'absolute', top: '35px', left: '9px', width: '2px', height: 'calc(100% - 35px)', backgroundColor: '#ddd' }}
+                          />
+                        )}
+
+                        {/* Status circle */}
                         <div
-                          style={{position: 'absolute', top: '35px', left: '9px', width: '2px', height: 'calc(100% - 35px)', backgroundColor: '#ddd'}}
+                          style={{ width: '18px', height: '18px', borderRadius: '50%', backgroundColor: color, marginTop: '5px', flexShrink: 0 }}
                         />
-                      )}
 
-                      {/* Status circle */}
-                      <div
-                        style={{width: '18px', height: '18px', borderRadius: '50%', backgroundColor: color, marginTop: '5px', flexShrink: 0}}
-                      />
-
-                      {/* Info Card */}
-                      <div style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderTop: '1px solid #ddd',
-                        borderRight: '1px solid #ddd',
-                        borderBottom: '1px solid #ddd',
-                        borderRadius: '8px',
-                        borderLeft: `4px solid ${color}`,
-                      }}>
-                        <div style={{ fontWeight: 600, color: '#222' }}>{appr.name}</div>
-                        <div style={{ fontSize: '13.5px', color: '#666', marginTop: '2px' }}>
-                          {appr.role_id === 1
-                            ? 'Administrator'
-                            : appr.role_id === 2
-                            ? 'Instructor'
-                            : appr.role_id === 3
-                            ? 'Program Head'
-                            : 'Staff'}
-                        </div>
-                        <div style={{ fontSize: '14px', marginTop: '6px' }}>
-                          <strong style={{ color }}>{isDenied ? 'Denied' : 'Approved'}</strong> — {appr.remarks || 'No remarks'}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
-                          {new Date(appr.date_approved).toLocaleString('en-PH', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
+                        {/* Info Card */}
+                        <div style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          borderTop: '1px solid #ddd',
+                          borderRight: '1px solid #ddd',
+                          borderBottom: '1px solid #ddd',
+                          borderRadius: '8px',
+                          borderLeft: `4px solid ${color}`,
+                        }}>
+                          <div style={{ fontWeight: 600, color: '#222' }}>{appr.name}</div>
+                          <div style={{ fontSize: '13.5px', color: '#666', marginTop: '2px' }}>
+                            {appr.role_id === 1
+                              ? 'Administrator'
+                              : appr.role_id === 2
+                                ? 'Instructor'
+                                : appr.role_id === 3
+                                  ? 'Program Head'
+                                  : 'Staff'}
+                          </div>
+                          <div style={{ fontSize: '14px', marginTop: '6px' }}>
+                            <strong style={{ color }}>{isDenied ? 'Denied' : 'Approved'}</strong> — {appr.remarks || 'No remarks'}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
+                            {new Date(appr.date_approved).toLocaleString('en-PH', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p style={{ fontSize: '14px', color: '#555' }}>No approvals yet.</p>
-            )}
-          </div>
-        )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ fontSize: '14px', color: '#555' }}>No approvals yet.</p>
+              )}
+            </div>
+          )}
       </div>
     );
   };
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header />
-      <div style={{ backgroundColor: '#fff' }}>
+      <div style={{ backgroundColor: '#fff', flex: 1 }}>
         <div style={sectionStyle}>
           <h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '-1px' }}>All Transactions</h2>
           <p style={{ fontSize: '17px', color: '#555', marginBottom: '25px' }}>
@@ -390,33 +390,33 @@ function TransactionPage() {
           {/* On-going Borrowed Request */}
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{marginLeft: "7px"}}>
+              <div style={{ marginLeft: "7px" }}>
                 <div style={{ ...headingStyle, fontSize: "17px" }}>On-going Borrowed Request</div>
                 <div style={{ ...subTextStyle, marginBottom: "10px" }}>
                   {activeRequest ? `Request No. ${activeRequest.request_slip_id}` : "No active borrow request yet."}
                 </div>
               </div>
-                {activeRequest && (
-                  <button
-                    style={{
-                      ...buttonStyle,
-                      backgroundColor: activeRequest.status_id !== 1 
-                        ? buttonStyle.backgroundColor 
-                        : "#b1b1b1ff",
-                      cursor: activeRequest.status_id !== 1 ? "pointer" : "not-allowed",
-                    }}
-                    disabled={activeRequest.status_id === 1}
-                    onClick={() => {
-                      if (activeRequest.status_id === 1) return;
+              {activeRequest && (
+                <button
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: activeRequest.status_id !== 1
+                      ? buttonStyle.backgroundColor
+                      : "#b1b1b1ff",
+                    cursor: activeRequest.status_id !== 1 ? "pointer" : "not-allowed",
+                  }}
+                  disabled={activeRequest.status_id === 1}
+                  onClick={() => {
+                    if (activeRequest.status_id === 1) return;
 
-                      const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
-                      const fileUrl = `${baseUrl}/pdf/borrow_slip_student_${activeRequest.request_slip_id}.pdf`;
-                      window.open(fileUrl, "_blank"); // opens in new tab (downloadable/viewable)
-                    }}
-                  >
-                    Export List Requisition
-                  </button>
-                )}
+                    const baseUrl = import.meta.env.VITE_API_BASE_URL;   //requires .env variable
+                    const fileUrl = `${baseUrl}/pdf/borrow_slip_student_${activeRequest.request_slip_id}.pdf`;
+                    window.open(fileUrl, "_blank"); // opens in new tab (downloadable/viewable)
+                  }}
+                >
+                  Export List Requisition
+                </button>
+              )}
             </div>
 
             {activeRequest && (
@@ -429,18 +429,18 @@ function TransactionPage() {
                 }}
               >
                 {/* ✅ Request Details */}
-                        <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
-                          <div style={{ flex: "1 1 45%" }}>
-                          <p><strong>Date Requested:</strong> {activeRequest.date_requested ? new Date(activeRequest.date_requested).toISOString().split('T')[0] : ''}</p>
-                          <p><strong>Date Use:</strong> {activeRequest.lab_date ? new Date(activeRequest.lab_date).toISOString().split('T')[0] : ''}</p>
-                          <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
-                          <p><strong>Subject:</strong> {activeRequest.subject}</p>
-                          <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
-                          </div>
-                          <div style={{ flex: "1 1 45%" }}>
-                          {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
-                            <div >
-                            {(() => {
+                <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px", padding: "15px" }}>
+                  <div style={{ flex: "1 1 45%" }}>
+                    <p><strong>Date Requested:</strong> {activeRequest.date_requested ? new Date(activeRequest.date_requested).toISOString().split('T')[0] : ''}</p>
+                    <p><strong>Date Use:</strong> {activeRequest.lab_date ? new Date(activeRequest.lab_date).toISOString().split('T')[0] : ''}</p>
+                    <p><strong>Time Use:</strong> {activeRequest.lab_time}</p>
+                    <p><strong>Subject:</strong> {activeRequest.subject}</p>
+                    <p><strong>Instructor:</strong> {activeRequest.instructor?.name || "(unknown)"}</p>
+                  </div>
+                  <div style={{ flex: "1 1 45%" }}>
+                    {activeRequest.groupMembers && activeRequest.groupMembers.length > 0 && (
+                      <div >
+                        {(() => {
                           const leader = activeRequest.groupMembers.find(gm => gm.is_leader);
                           const members = activeRequest.groupMembers.filter(gm => !gm.is_leader);
 
@@ -520,16 +520,16 @@ function TransactionPage() {
                               if (itemReturn.status === "Returned") itemStatus = "Returned";
                               else if (itemReturn.status === "Needs Replacement") itemStatus = "Needs Replacement";
                               else itemStatus = "Released";
-                            } 
+                            }
                             else if (statusId === 3 || statusId === 4) {
                               // Request released = items marked released if no return record yet
                               itemStatus = "Released";
-                            } 
+                            }
                             else if (statusId === 2) {
                               // Request approved but not yet released
                               itemStatus = "Reserved";
                             }
-                            else if (statusId === 1){
+                            else if (statusId === 1) {
                               // Request has just been submitted
                               itemStatus = "Pending";
                             }
@@ -569,44 +569,44 @@ function TransactionPage() {
           </div>
 
           {/* Transaction History */}
-                <div style={{ ...cardStyle, padding: '25px', marginBottom: '60px' }}>
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '19px', fontWeight: 600 }}>Transaction History</div>
-                  <div style={{ fontSize: '15px', color: '#777', margin: '-4px 0 12px' }}>Track completed equipment transactions</div>
-                </div>
+          <div style={{ ...cardStyle, padding: '25px', marginBottom: '60px' }}>
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '19px', fontWeight: 600 }}>Transaction History</div>
+              <div style={{ fontSize: '15px', color: '#777', margin: '-4px 0 12px' }}>Track completed equipment transactions</div>
+            </div>
 
-                {historyRequests.map((req, index) => (
-                  <div
-                  key={req.request_id}
-                  style={{
-                    border: "0.5px solid #ccc",
-                    borderRadius: "10px",
-                    marginBottom: "12px",
-                    padding: "15px 16px",
-                    backgroundColor: "rgba(255,255,255,0.8)",
-                  }}
-                  >
-                  <div
-                    onClick={() => toggleExpand(index)}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                  >
-                    <div>
+            {historyRequests.map((req, index) => (
+              <div
+                key={req.request_id}
+                style={{
+                  border: "0.5px solid #ccc",
+                  borderRadius: "10px",
+                  marginBottom: "12px",
+                  padding: "15px 16px",
+                  backgroundColor: "rgba(255,255,255,0.8)",
+                }}
+              >
+                <div
+                  onClick={() => toggleExpand(index)}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                >
+                  <div>
                     <strong>Completed Borrowed Request</strong>
                     <div style={{ fontSize: "13px", color: "#777" }}>
                       Request No. {req.request_slip_id}
                     </div>
-                    </div>
-                    <FaChevronDown
+                  </div>
+                  <FaChevronDown
                     style={{
                       color: "#991F1F",
                       transform: expandedIndex === index ? "rotate(180deg)" : "rotate(0deg)",
                       transition: "transform 0.2s ease",
                     }}
-                    />
-                  </div>
+                  />
+                </div>
 
-                  {expandedIndex === index && (
-                    <div
+                {expandedIndex === index && (
+                  <div
                     style={{
                       marginTop: "16px",
                       padding: "20px",
@@ -617,19 +617,19 @@ function TransactionPage() {
                       color: "#333",
                       lineHeight: 1.6,
                     }}
-                    >
+                  >
                     <div style={{ display: "flex", flexWrap: "wrap", columnGap: "40px", rowGap: "10px", marginBottom: "18px" }}>
                       <div style={{ flex: "1 1 45%" }}>
-                      <p><strong>Date Requested:</strong> {req.date_requested ? new Date(req.date_requested).toISOString().split('T')[0] : ''}</p>
-                      <p><strong>Date Use:</strong> {req.lab_date ? new Date(req.lab_date).toISOString().split('T')[0] : ''}</p>
-                      <p><strong>Time Use:</strong> {req.lab_time}</p>
-                      <p><strong>Subject:</strong> {req.subject}</p>
-                      <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
+                        <p><strong>Date Requested:</strong> {req.date_requested ? new Date(req.date_requested).toISOString().split('T')[0] : ''}</p>
+                        <p><strong>Date Use:</strong> {req.lab_date ? new Date(req.lab_date).toISOString().split('T')[0] : ''}</p>
+                        <p><strong>Time Use:</strong> {req.lab_time}</p>
+                        <p><strong>Subject:</strong> {req.subject}</p>
+                        <p><strong>Instructor:</strong> {req.instructor?.name || "(unknown)"}</p>
                       </div>
                       <div style={{ flex: "1 1 45%" }}>
-                      {req.groupMembers && req.groupMembers.length > 0 && (
-                        <div>
-                        {(() => {
+                        {req.groupMembers && req.groupMembers.length > 0 && (
+                          <div>
+                            {(() => {
                               const leader = req.groupMembers.find(gm => gm.is_leader);
                               const members = req.groupMembers.filter(gm => !gm.is_leader);
 
@@ -683,13 +683,14 @@ function TransactionPage() {
                               </td>
                               <td style={{ textAlign: "center", padding: "10px" }}>{item.requested_qty}</td>
                               <td style={{ padding: "10px" }}>{item.unit}</td>
-                              <td style={{ padding: "10px", color: "#267326", fontWeight: 500 }}> 
-                                <span style={{fontSize: "13.5px",
+                              <td style={{ padding: "10px", color: "#267326", fontWeight: 500 }}>
+                                <span style={{
+                                  fontSize: "13.5px",
                                   padding: "4px 10px",
                                   backgroundColor: '#26732620',
                                   borderRadius: "5px",
                                   display: "inline-block",
-                                  }}>Returned
+                                }}>Returned
                                 </span>
                               </td>
                             </tr>
@@ -705,7 +706,7 @@ function TransactionPage() {
         </div>
       </div>
       <Footer />
-    </>
+    </div>
   );
 }
 
