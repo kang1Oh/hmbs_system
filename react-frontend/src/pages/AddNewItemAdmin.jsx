@@ -17,7 +17,7 @@ const styles = {
   subtitle: { color: '#666', fontSize: '17px', marginTop: '-4px', marginBottom: '-1.0rem' },
   importBtn: { padding: '7px 25px', background: '#21be6dff', color: 'white', border: '1px solid #21be6dff', borderRadius: '999px', fontWeight: 600, cursor: 'pointer', display: 'flex', fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
   divider: { border: 'none', borderTop: '1.5px solid rgba(97, 97, 97, 0.3)', marginBottom: '1.3rem' },
-  formGroup: { marginBottom: '1.4rem' , flex: 1 },
+  formGroup: { marginBottom: '1.4rem', flex: 1 },
   row: { display: "flex", gap: "1rem" },
   flexRow: { display: 'flex', gap: '1rem', marginBottom: '1.25rem' },
   flex1: { flex: 1 },
@@ -74,22 +74,32 @@ const AddNewItemAdmin = () => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'image' ? files[0] : value,
-    }));
+
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: name === 'image' ? files[0] : value,
+      };
+
+      // Auto-set status if quantity becomes 0
+      if (name === 'quantity' && Number(value) === 0) {
+        newData.status = 'Unavailable';
+      }
+
+      return newData;
+    });
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-      if (file) {
-        setSelectedFile(file);
-        setFormData((prev) => ({
-          ...prev,
-          image: file, 
-        }));
-      }
+    if (file) {
+      setSelectedFile(file);
+      setFormData((prev) => ({
+        ...prev,
+        image: file,
+      }));
+    }
   };
 
   const handleRemoveFile = () => {
@@ -384,7 +394,7 @@ const AddNewItemAdmin = () => {
                   <button
                     type="button"
                     onClick={handleRemoveFile}
-                    style={{position: "absolute", top: "20px", right: "20px", background: "#991F1F", color: "#fff", border: "none", borderRadius: "50%", width: "30px", height: "30px", cursor: "pointer",}}
+                    style={{ position: "absolute", top: "20px", right: "20px", background: "#991F1F", color: "#fff", border: "none", borderRadius: "50%", width: "30px", height: "30px", cursor: "pointer", }}
                   >
                     X
                   </button>
@@ -407,8 +417,8 @@ const AddNewItemAdmin = () => {
                 style={{ ...styles.visuallyHidden }}
                 id="uploadFile"
               />
-              <label 
-                htmlFor="uploadFile" 
+              <label
+                htmlFor="uploadFile"
                 style={{ ...styles.uploadBtn, ...(isBrowseHover && styles.uploadBtnHover) }}
                 onMouseEnter={() => setIsBrowseHover(true)}
                 onMouseLeave={() => setIsBrowseHover(false)}
@@ -435,13 +445,13 @@ const AddNewItemAdmin = () => {
         </form>
 
 
-        {isImportModalOpen && 
-          <ImportCSVModal 
-            onClose={() => setIsImportModalOpen(false)} 
+        {isImportModalOpen &&
+          <ImportCSVModal
+            onClose={() => setIsImportModalOpen(false)}
             endpoint={"/api/tools/import"}
             entityName={"tool"}
           />
-          }
+        }
         {isItemAddedModalOpen && <NewItemAddedModal onClose={() => setIsItemAddedModalOpen(false)} />}
       </main>
     </div>

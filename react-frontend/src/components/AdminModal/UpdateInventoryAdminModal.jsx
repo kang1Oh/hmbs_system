@@ -1,4 +1,4 @@
-import React, { useState , useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { MdErrorOutline } from "react-icons/md";
 import { ChevronDown } from "lucide-react";
 import InventoryUpdatedAdminModal from "./InventoryUpdatedAdminModal";
@@ -43,7 +43,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
       .then(res => setCategories(res.data))
       .catch(err => console.error("Failed to load categories", err));
   }, []);
-  
+
   const handleSave = async () => {
     if (!status) {
       setStatusError("Please select a status");
@@ -89,8 +89,8 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
     const previewSrc = imageFile
       ? URL.createObjectURL(imageFile) // new upload preview
       : tool?.img
-      ? `${import.meta.env.VITE_API_BASE_URL}${tool.img}` // existing image
-      : null;
+        ? `${import.meta.env.VITE_API_BASE_URL}${tool.img}` // existing image
+        : null;
 
     return (
       <div style={styles.formGroup}>
@@ -200,7 +200,7 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
             <div style={styles.row}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Category</label>
-                <div style={{position: "relative"}}>
+                <div style={{ position: "relative" }}>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
@@ -249,7 +249,13 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                   placeholder="Enter quantity"
                   name="quantity"
                   value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuantity(val);
+                    if (Number(val) === 0) {
+                      setStatus("Unavailable");
+                    }
+                  }}
                   style={{
                     ...styles.input,
                     ...(focusedInput === "quantity" && styles.inputFocused),
@@ -309,14 +315,14 @@ const UpdateInventoryAdminModal = ({ tool, onClose, onSave }) => {
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     onFocus={() => setFocusedInput("status")}
-                    onBlur={() => setFocusedInput("")}  
+                    onBlur={() => setFocusedInput("")}
                     style={{
                       ...styles.select,
                       border: statusError
                         ? "2px solid red"
                         : focusedInput === "status"
-                        ? styles.selectFocused.border
-                        : styles.select.border,
+                          ? styles.selectFocused.border
+                          : styles.select.border,
                     }}
                   >
                     <option value="">Select status</option>

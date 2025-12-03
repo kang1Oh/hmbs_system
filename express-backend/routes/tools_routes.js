@@ -114,7 +114,14 @@ router.get('/', async (req, res) => {
 
 // ✅ CREATE tool
 router.post('/', upload.single('image'), async (req, res) => {
-  const { category_id, name, location, available_qty, unit, price, tool_status, disposal_status } = req.body;
+  const { category_id, name, location, available_qty, unit, price, disposal_status } = req.body;
+  let { tool_status } = req.body;
+
+  // Auto-set status to Unavailable if quantity is 0
+  if (Number(available_qty) === 0) {
+    tool_status = 'Unavailable';
+  }
+
   const imgPath = req.file
     ? `/uploads/tools/${req.file.filename}`
     : req.body.img?.trim() || '/uploads/tools/default.png';
@@ -149,6 +156,11 @@ router.put('/:tool_id', upload.single('image'), async (req, res) => {
   const { tool_id } = req.params;
   const updateData = { ...req.body };
   if (req.file) updateData.img = `/uploads/tools/${req.file.filename}`;
+
+  // Auto-set status to Unavailable if quantity is 0
+  if (updateData.available_qty !== undefined && Number(updateData.available_qty) === 0) {
+    updateData.tool_status = 'Unavailable';
+  }
 
   const fields = Object.keys(updateData);
   const values = Object.values(updateData);

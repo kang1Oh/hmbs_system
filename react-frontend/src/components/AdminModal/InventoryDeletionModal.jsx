@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import WarningTriangle from '../../assets/warning-triangle.svg';
 
-const InventoryDeletionAdminModal = ({ tool, onCancel, onDelete }) => {
+const InventoryDeletionAdminModal = ({ tool, onCancel, onDelete, error }) => {
   const [isHoveringDelete, setIsHoveringDelete] = useState(false);
 
   const styles = {
@@ -83,9 +83,14 @@ const InventoryDeletionAdminModal = ({ tool, onCancel, onDelete }) => {
         <img src={WarningTriangle} alt="Warning" style={styles.icon} />
         <h2 style={styles.title}>Confirm Deletion</h2>
         <p style={styles.message}>
-          Are you sure you want to delete <span style={{fontWeight:"bold"}}>{tool.name}</span>?<br />
+          Are you sure you want to delete <span style={{ fontWeight: "bold" }}>{tool.name}</span>?<br />
           This action cannot be undone.
         </p>
+        {error && (
+          <div style={{ color: '#DC2626', marginBottom: '20px', fontSize: '14px', maxWidth: '100%' }}>
+            {error}
+          </div>
+        )}
         <div style={styles.buttonGroup}>
           <button
             style={{ ...styles.button, ...styles.cancelButton }}

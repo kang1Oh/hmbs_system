@@ -23,6 +23,7 @@ const CRUDInventoryPage = () => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showItemDeletedModal, setShowItemDeletedModal] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,7 +72,7 @@ const CRUDInventoryPage = () => {
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const getPaginated = (page) => filteredData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  
+
   const styles = {
     layout: { display: 'flex', fontFamily: 'Poppins, sans-serif' },
     main: { marginLeft: '240px', padding: '2rem', flex: 1, backgroundColor: '#fff', minHeight: '100vh', fontFamily: 'Poppins, sans-serif' },
@@ -231,6 +232,7 @@ const CRUDInventoryPage = () => {
                           style={{ color: '#000', cursor: 'pointer' }}
                           onClick={() => {
                             setSelectedTool(item);
+                            setDeleteError(null);
                             setShowDeleteModal(true);
                           }}
                         />
@@ -301,16 +303,31 @@ const CRUDInventoryPage = () => {
         {showDeleteModal && (
           <InventoryDeletionModal
             tool={selectedTool}
-            onCancel={() => setShowDeleteModal(false)}
+            error={deleteError}
+            onCancel={() => {
+              setShowDeleteModal(false);
+              setDeleteError(null);
+            }}
             onDelete={async () => {
               try {
                 await axios.delete(`/api/tools/${selectedTool.tool_id}`);
                 setShowDeleteModal(false);
                 setShowItemDeletedModal(true);
-
+                setDeleteError(null);
                 fetchTools();
               } catch (err) {
                 console.error("Failed to delete tool:", err);
+                // Check for foreign key constraint error
+                if (err.response && err.response.data && err.response.data.error) {
+                  const errorMsg = err.response.data.error;
+                  if (errorMsg.includes("foreign key constraint")) {
+                    setDeleteError("Cannot delete this item because it has associated borrow records. Please mark it as 'Unavailable' instead.");
+                  } else {
+                    setDeleteError("Failed to delete item: " + errorMsg);
+                  }
+                } else {
+                  setDeleteError("An unexpected error occurred while deleting the item.");
+                }
               }
             }}
           />
