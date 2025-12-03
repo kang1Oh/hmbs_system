@@ -54,6 +54,33 @@ Since `node_modules` and `.env` files are not on GitHub, follow these steps to s
 
 ---
 
+## 🗄️ Database Migration
+
+To transfer the database from your computer to the custodian's unit:
+
+### Step 1: Export from Your Computer
+1. Go to `scripts` folder.
+2. Run `db-export-full.bat` to create a full backup (Schema + Data).
+   - This creates `hmbs_full_backup.sql` in the project root.
+3. OR run `db-export-schema.bat` if you only want the empty tables (Schema only).
+   - This creates `hmbs_schema.sql` in the project root.
+
+### Step 2: Import to Custodian's Computer
+1. Copy the generated `.sql` file to the custodian's computer (e.g., via Google Drive or USB).
+2. Ensure the database specified in `.env` (e.g., `hmbs_db`) exists on the custodian's PostgreSQL.
+   - You can create it using pgAdmin or command line: `CREATE DATABASE hmbs_db;`
+3. Drag and drop the `.sql` file onto `scripts\db-import.bat`.
+4. The script will run and populate the database.
+
+### Step 3: CSV Import (Optional)
+If you exported **Schema Only** and want to import data from CSV files:
+1. Ensure your CSV files match the table structure.
+2. Use pgAdmin's "Import/Export Data" feature on each table.
+   - Right-click table → Import/Export Data...
+   - Select Import, choose filename, set format to CSV, header to Yes.
+
+---
+
 ## ⚙️ Automatic Silent Startup
 
 To make the system start automatically **without showing command windows**:
