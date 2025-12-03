@@ -40,6 +40,16 @@ This system promotes accountability and professional responsibility among studen
 
 ---
 
+## 🚀 Deployment
+
+For local deployment instructions and auto-start setup, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+**Quick Start:**
+1. Double-click `start-hmbs.bat` in the project root
+2. Open browser and navigate to `http://localhost:5173`
+
+---
+
 ## Authors & Contributors  
 | Name | Role | Contributions |
 |------|------|----------------|
